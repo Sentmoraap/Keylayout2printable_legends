@@ -6,8 +6,9 @@ description   = "Generate keyboard labels png to print for relegendables from a 
 license       = "GPL-3.0-or-later"
 srcDir        = "src"
 bin           = @["keyboard_labels"]
-
+binDir        = "bin"
 
 # Dependencies
 
 requires "nim >= 2.0.2"
+requires "pixie >= 5.0.6"
