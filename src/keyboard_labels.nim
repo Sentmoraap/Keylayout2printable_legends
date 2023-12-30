@@ -1,4 +1,4 @@
-import std/[json, xmlparser, xmltree, strutils]
+import std/[json, xmlparser, xmltree, strutils, strformat]
 import pixie
 
 func getColor(node: JsonNode): ColorRGBA =
@@ -14,7 +14,7 @@ template findChild[T](node:XmlNode, child:untyped, elementTag:string, attrName:s
       elif T is int:
         if `child`.attr(attrName).parseInt != attrValue: continue
       else:
-        {.fatal: "T must be string or int".}
+        {.error: "T must be string or int".}
       success
       break loop
     failure
@@ -43,15 +43,19 @@ proc main() =
   let codesArray = keysNode["codes"]
   let stateName = keysNode["state"].getStr
   
-  let mapSetName = keysNode["keyMapSet"].getStr
-  let keyMapIndex = keysNode["keyMapIndex"].getInt
+  var mapSetName = keysNode["keyMapSet"].getStr
+  var keyMapIndex = keysNode["keyMapIndex"].getInt
   var keyMaps = newSeq[XmlNode]()
-  findChild keyLayout, keyMapSet, "keyMapSet", "id", mapSetName:
-    findChild keyMapSet, keyMap, "keyMap", "index", keyMapIndex:
-      keyMaps.add keyMap
-    do: echo "TODO error"
-  do: echo "TODO error"
-  # TODO: baseMapSet
+  block findKeyMaps:
+    while true:
+      findChild keyLayout, keyMapSet, "keyMapSet", "id", mapSetName:
+        findChild keyMapSet, keyMap, "keyMap", "index", keyMapIndex:
+          keyMaps.add keyMap
+          mapSetName = keyMap.attr("baseMapSet")
+          if mapSetName == "": break findKeyMaps
+          keyMapIndex = keyMap.attr("baseIndex").parseInt 
+        do: quit &"keyMap {keyMapIndex} in keyMapSet {mapSetName} not found"
+      do: quit &"keyMapSet {mapSetName} not found"
 
   let actions = keyLayout.child("actions")
   
@@ -68,14 +72,21 @@ proc main() =
     var path = newPath()
     path.rect(posX, posY, keyWidth, keyHeight)
     image.fillPath path, keyBackground
-    findChild keyMaps[0], keyElement, "key", "code", code.getInt:
-      let actionName = keyElement.attr("action")
-      findChild actions, action, "action", "id", actionName:
-        findChild action, state, "when", "state", stateName:
-          image.fillText font, state.attr("output"), translate(vec2(posX, posY)), hAlign = CenterAlign
+    let keyCode = code.getInt
+    block findKeyMaps:
+      for keyMap in keyMaps:
+        findChild keyMap, keyElement, "key", "code", keyCode:
+          let actionName = keyElement.attr("action")
+          findChild actions, action, "action", "id", actionName:
+            findChild action, state, "when", "state", stateName:
+              image.fillText font, state.attr("output"), translate(vec2(posX, posY)), hAlign = CenterAlign
+            do: discard
+          do: echo "Action ", actionName, " not found"
+          {.push warning[UnreachableCode]:off.}
+          break findKeyMaps
+          {.pop.}
         do: discard
-      do: echo "Action ", actionName, " not found"
-    do: echo "TODO parent keymap"
+      echo "Key ", keyCode, " not found" 
     if posX + 2 * posXAdd >= imageWidth.float:
       posX = padding
       posY += posYAdd
