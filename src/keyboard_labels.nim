@@ -1,9 +1,21 @@
-import std/[json, xmlparser, xmltree, strutils, strformat]
+import std/[json, xmlparser, xmltree, strutils, strformat, options]
 import pixie
 
-func getColor(node: JsonNode): ColorRGBA =
-  rgba(node["r"].getInt.uint8, node["g"].getInt.uint8, node["b"].getInt.uint8, 255)
+type
+  Legend = object
+    # JSON data
+    fontPath: string
+    size: float
+    color: Color
+    keyMapSet: string
+    keyMapIndex: int
+    stateName: string
+    pos: Vec2
 
+    # Program data
+    keyMaps: seq[XmlNode]
+    font: Font
+    
 template findChild[T](node:XmlNode, child:untyped, elementTag:string, attrName:string, attrValue:T, success: untyped,
     failure: untyped) =
   block loop:
@@ -19,6 +31,24 @@ template findChild[T](node:XmlNode, child:untyped, elementTag:string, attrName:s
       break loop
     failure
 
+var ppcm: float
+
+func getColor(node: JsonNode): ColorRGBA =
+  rgba(node["r"].getInt.uint8, node["g"].getInt.uint8, node["b"].getInt.uint8, 255)
+
+proc getPixels(x: JsonNode): float = ppcm * x.getFloat
+
+proc getLegend(node: JsonNode, base: Option[Legend] = none(Legend)): Legend =
+  if base.isSome : result = base.unsafeGet
+  if node.contains "font": result.fontPath = node["font"].getStr
+  if node.contains "size": result.size = node["size"].getPixels
+  if node.contains "color": result.color = node["color"].getColor.color
+  if node.contains "keyMapSet": result.keyMapSet = node["keyMapSet"].getStr
+  if node.contains "keyMapIndex": result.keyMapIndex = node["keyMapIndex"].getInt
+  if node.contains "state": result.stateName = node["state"].getStr
+  if node.contains "posX": result.pos.x = node["posX"].getPixels
+  if node.contains "posY": result.pos.y = node["posY"].getPixels
+
 proc main() =
   echo "Reading data"
 
@@ -26,8 +56,7 @@ proc main() =
   let keyLayout = loadXml "Optimot Qwerty.keylayout" # TODO: parameter 
 
   let imageNode = settingsJson["image"]
-  let ppcm = imageNode["ppcm"].getFloat
-  func getPixels(x: JsonNode): float = ppcm * x.getFloat
+  ppcm = imageNode["ppcm"].getFloat
   let imageWidth = imageNode["width"].getPixels.int
   let imageHeight = imageNode["height"].getPixels.int
   let imageBackground = imageNode["background"].getColor
@@ -37,25 +66,27 @@ proc main() =
   let keyHeight = keysNode["height"].getPixels
   let keyBackground = keysNode["background"].getColor
   let padding = keysNode["padding"].getPixels
-  var font = readFont keysNode["font"].getStr
-  font.size = keysNode["fontSize"].getPixels
-  font.paint.color = keysNode["fontColor"].getColor.color
   let codesArray = keysNode["codes"]
-  let stateName = keysNode["state"].getStr
-  
-  var mapSetName = keysNode["keyMapSet"].getStr
-  var keyMapIndex = keysNode["keyMapIndex"].getInt
-  var keyMaps = newSeq[XmlNode]()
-  block findKeyMaps:
-    while true:
-      findChild keyLayout, keyMapSet, "keyMapSet", "id", mapSetName:
-        findChild keyMapSet, keyMap, "keyMap", "index", keyMapIndex:
-          keyMaps.add keyMap
-          mapSetName = keyMap.attr("baseMapSet")
-          if mapSetName == "": break findKeyMaps
-          keyMapIndex = keyMap.attr("baseIndex").parseInt 
-        do: quit &"keyMap {keyMapIndex} in keyMapSet {mapSetName} not found"
-      do: quit &"keyMapSet {mapSetName} not found"
+
+  let baseLegends = keysNode["baseLegends"].getLegend
+  var legends = newSeq[Legend]()
+  for legend in keysNode["legends"]: legends.add legend.getLegend some(baseLegends)
+  for legend in mitems(legends):
+    legend.font = readFont legend.fontPath # TODO: do not load the same font multiple times
+    legend.font.size = legend.size
+    legend.font.paint.color = legend.color
+    block findKeyMaps:
+      var mapSetName = legend.keyMapSet
+      var keyMapIndex = legend.keyMapIndex
+      while true:
+        findChild keyLayout, keyMapSet, "keyMapSet", "id", mapSetName:
+          findChild keyMapSet, keyMap, "keyMap", "index", keyMapIndex:
+            legend.keyMaps.add keyMap
+            mapSetName = keyMap.attr("baseMapSet")
+            if mapSetName == "": break findKeyMaps
+            keyMapIndex = keyMap.attr("baseIndex").parseInt
+          do: quit &"keyMap {keyMapIndex} in keyMapSet {mapSetName} not found"
+        do: quit &"keyMapSet {mapSetName} not found"
 
   let actions = keyLayout.child("actions")
   
@@ -73,20 +104,22 @@ proc main() =
     path.rect(posX, posY, keyWidth, keyHeight)
     image.fillPath path, keyBackground
     let keyCode = code.getInt
-    block findKeyMaps:
-      for keyMap in keyMaps:
-        findChild keyMap, keyElement, "key", "code", keyCode:
-          let actionName = keyElement.attr("action")
-          findChild actions, action, "action", "id", actionName:
-            findChild action, state, "when", "state", stateName:
-              image.fillText font, state.attr("output"), translate(vec2(posX, posY)), hAlign = CenterAlign
-            do: discard
-          do: echo "Action ", actionName, " not found"
-          {.push warning[UnreachableCode]:off.}
-          break findKeyMaps
-          {.pop.}
-        do: discard
-      echo "Key ", keyCode, " not found" 
+    for legend in legends:
+      block findKeyMaps:
+        for keyMap in legend.keyMaps:
+          findChild keyMap, keyElement, "key", "code", keyCode:
+            let actionName = keyElement.attr("action")
+            findChild actions, action, "action", "id", actionName:
+              findChild action, state, "when", "state", legend.stateName:
+                image.fillText legend.font, state.attr("output"), translate(vec2(posX, posY) + legend.pos),
+                    hAlign = CenterAlign
+              do: discard
+            do: echo "Action ", actionName, " not found"
+            {.push warning[UnreachableCode]:off.}
+            break findKeyMaps
+            {.pop.}
+          do: discard
+        echo "Key ", keyCode, " not found" 
     if posX + 2 * posXAdd >= imageWidth.float:
       posX = padding
       posY += posYAdd
