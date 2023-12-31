@@ -1,4 +1,4 @@
-import std/[json, xmlparser, xmltree, strutils, strformat, options, unicode, tables]
+import std/[json, jsonutils, options, strformat, strutils, tables, unicode, xmlparser, xmltree]
 import pixie
 
 type
@@ -11,6 +11,7 @@ type
     keyMapIndex: int
     stateName: string
     pos: Vec2
+    align: HorizontalAlignment
 
     # Program data
     keyMaps: seq[XmlNode]
@@ -54,6 +55,7 @@ proc getLegend(node: JsonNode, base: Option[Legend] = none(Legend)): Legend =
   if node.contains "state": result.stateName = node["state"].getStr
   if node.contains "posX": result.pos.x = node["posX"].getPixels
   if node.contains "posY": result.pos.y = node["posY"].getPixels
+  if node.contains "align": result.align.fromJson node["align"]
 
 proc main() =
   echo "Reading data"
@@ -134,7 +136,7 @@ proc main() =
                           hasGlyphs = false
                           break runesLoop
                     if hasGlyphs:
-                      image.fillText font, str, translate(vec2(posX, posY) + legend.pos), hAlign = CenterAlign
+                      image.fillText font, str, translate(vec2(posX, posY) + legend.pos), hAlign = legend.align
                       typefaces[font.typeface.filePath].uses += 1
                       break fontsLoop
                   echo &"Glyphs for {str} not found"
