@@ -21,6 +21,11 @@ type
     uses: int = 0
     typeface: Typeface
 
+  Substitution = object
+    string: string
+    translate = vec2()
+    scale = vec2(1)
+
 template findChild[T](node:XmlNode, child:untyped, elementTag:string, attrName:string, attrValue:T, success: untyped,
     failure: untyped) =
   block loop:
@@ -103,6 +108,16 @@ proc main() =
           do: quit &"keyMap {keyMapIndex} in keyMapSet {mapSetName} not found"
         do: quit &"keyMapSet {mapSetName} not found"
 
+  var substitutions = initTable[string, Substitution]()
+  for key, node in settingsJson["substitutions"]:
+    var substitution = Substitution()
+    if node.contains "string": substitution.string = node["string"].getStr
+    if node.contains "translateX": substitution.translate.x = node["translateX"].getPixels
+    if node.contains "translateY": substitution.translate.y = node["translateY"].getPixels
+    if node.contains "scaleX": substitution.scale.x = node["scaleX"].getFloat
+    if node.contains "scaleY": substitution.scale.y = node["scaleY"].getFloat
+    substitutions[key] = substitution
+
   let actions = keyLayout.child("actions")
 
   echo "Generating image"
@@ -126,7 +141,14 @@ proc main() =
             let actionName = keyElement.attr("action")
             findChild actions, action, "action", "id", actionName:
               findChild action, state, "when", "state", legend.stateName:
-                let str = state.attr("output")
+                var str = state.attr("output")
+                var strTranslate = vec2()
+                var strScale = vec2(1)
+                if substitutions.contains str:
+                  let substitution = substitutions[str]
+                  if substitution.string != "": str = substitution.string
+                  strTranslate = substitution.translate
+                  strScale = substitution.scale
                 block fontsLoop:
                   for font in legend.fonts:
                     var hasGlyphs = true
@@ -136,7 +158,8 @@ proc main() =
                           hasGlyphs = false
                           break runesLoop
                     if hasGlyphs:
-                      image.fillText font, str, translate(vec2(posX, posY) + legend.pos), hAlign = legend.align
+                      var transform = translate(vec2(posX, posY) + legend.pos + strTranslate) * scale(strScale)
+                      image.fillText font, str, transform, hAlign = legend.align
                       typefaces[font.typeface.filePath].uses += 1
                       break fontsLoop
                   echo &"Glyphs for {str} not found"
@@ -164,3 +187,4 @@ proc main() =
 main()
 
 # TODO: error checking
+# TODO: check inneficient memory usages
