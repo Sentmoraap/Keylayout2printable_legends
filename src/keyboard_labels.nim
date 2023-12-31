@@ -1,10 +1,10 @@
-import std/[json, xmlparser, xmltree, strutils, strformat, options]
+import std/[json, xmlparser, xmltree, strutils, strformat, options, unicode, tables]
 import pixie
 
 type
   Legend = object
     # JSON data
-    fontPath: string
+    fontPaths: seq[string]
     size: float
     color: Color
     keyMapSet: string
@@ -14,8 +14,12 @@ type
 
     # Program data
     keyMaps: seq[XmlNode]
-    font: Font
-    
+    fonts: seq[Font]
+
+  TypefaceData = object
+    uses: int = 0
+    typeface: Typeface
+
 template findChild[T](node:XmlNode, child:untyped, elementTag:string, attrName:string, attrValue:T, success: untyped,
     failure: untyped) =
   block loop:
@@ -34,13 +38,15 @@ template findChild[T](node:XmlNode, child:untyped, elementTag:string, attrName:s
 var ppcm: float
 
 func getColor(node: JsonNode): ColorRGBA =
-  rgba(node["r"].getInt.uint8, node["g"].getInt.uint8, node["b"].getInt.uint8, 255)
+  rgba node["r"].getInt.uint8, node["g"].getInt.uint8, node["b"].getInt.uint8, 255
 
 proc getPixels(x: JsonNode): float = ppcm * x.getFloat
 
 proc getLegend(node: JsonNode, base: Option[Legend] = none(Legend)): Legend =
   if base.isSome : result = base.unsafeGet
-  if node.contains "font": result.fontPath = node["font"].getStr
+  if node.contains "fonts":
+    result.fontPaths.setLen 0
+    for arrayNode in node["fonts"]: result.fontPaths.add arrayNode.getStr
   if node.contains "size": result.size = node["size"].getPixels
   if node.contains "color": result.color = node["color"].getColor.color
   if node.contains "keyMapSet": result.keyMapSet = node["keyMapSet"].getStr
@@ -53,7 +59,7 @@ proc main() =
   echo "Reading data"
 
   let settingsJson = json.parsefile "settings.json" # TODO: parameter
-  let keyLayout = loadXml "Optimot Qwerty.keylayout" # TODO: parameter 
+  let keyLayout = loadXml "Optimot Qwerty.keylayout" # TODO: parameter
 
   let imageNode = settingsJson["image"]
   ppcm = imageNode["ppcm"].getFloat
@@ -68,13 +74,20 @@ proc main() =
   let padding = keysNode["padding"].getPixels
   let codesArray = keysNode["codes"]
 
+  var typefaces = initTable[string, TypefaceData]()
   let baseLegends = keysNode["baseLegends"].getLegend
   var legends = newSeq[Legend]()
   for legend in keysNode["legends"]: legends.add legend.getLegend some(baseLegends)
-  for legend in mitems(legends):
-    legend.font = readFont legend.fontPath # TODO: do not load the same font multiple times
-    legend.font.size = legend.size
-    legend.font.paint.color = legend.color
+  for legend in legends.mitems:
+    for fontPath in legend.fontPaths:
+      var font = newFont (if typefaces.contains fontPath: typefaces[fontPath].typeface
+      else:
+        let typeface = readTypeface fontPath
+        typefaces[fontPath] = TypefaceData(typeface: typeface)
+        typeface)
+      font.size = legend.size
+      font.paint.color = legend.color
+      legend.fonts.add font
     block findKeyMaps:
       var mapSetName = legend.keyMapSet
       var keyMapIndex = legend.keyMapIndex
@@ -89,7 +102,7 @@ proc main() =
         do: quit &"keyMapSet {mapSetName} not found"
 
   let actions = keyLayout.child("actions")
-  
+
   echo "Generating image"
 
   let image = newImage(imageWidth, imageHeight)
@@ -111,19 +124,34 @@ proc main() =
             let actionName = keyElement.attr("action")
             findChild actions, action, "action", "id", actionName:
               findChild action, state, "when", "state", legend.stateName:
-                image.fillText legend.font, state.attr("output"), translate(vec2(posX, posY) + legend.pos),
-                    hAlign = CenterAlign
+                let str = state.attr("output")
+                block fontsLoop:
+                  for font in legend.fonts:
+                    var hasGlyphs = true
+                    block runesLoop:
+                      for rune in str.runes:
+                        if not font.typeface.hasGlyph rune:
+                          hasGlyphs = false
+                          break runesLoop
+                    if hasGlyphs:
+                      image.fillText font, str, translate(vec2(posX, posY) + legend.pos), hAlign = CenterAlign
+                      typefaces[font.typeface.filePath].uses += 1
+                      break fontsLoop
+                  echo &"Glyphs for {str} not found"
               do: discard
             do: echo "Action ", actionName, " not found"
             {.push warning[UnreachableCode]:off.}
             break findKeyMaps
             {.pop.}
           do: discard
-        echo "Key ", keyCode, " not found" 
+        echo "Key ", keyCode, " not found"
     if posX + 2 * posXAdd >= imageWidth.float:
       posX = padding
       posY += posYAdd
     else: posX += posXAdd
+
+  for path, typeface in typefaces:
+    echo &"Font {path} used {typeface.uses} time(s)"
 
   echo "Saving file"
 
