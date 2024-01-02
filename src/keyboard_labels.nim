@@ -7,6 +7,7 @@ type
     fontPaths: seq[string]
     size: float
     color: Color
+    otherColor: Color
     keyMapSet: string
     keyMapIndex: int
     stateName: string
@@ -25,6 +26,7 @@ type
     string: string
     translate = vec2()
     scale = vec2(1)
+    image: Image
 
 template findChild[T](node:XmlNode, child:untyped, elementTag:string, attrName:string, attrValue:T, success: untyped,
     failure: untyped) =
@@ -55,6 +57,7 @@ proc getLegend(node: JsonNode, base: Option[Legend] = none(Legend)): Legend =
     for arrayNode in node["fonts"]: result.fontPaths.add arrayNode.getStr
   if node.contains "size": result.size = node["size"].getPixels
   if node.contains "color": result.color = node["color"].getColor.color
+  if node.contains "otherColor": result.otherColor = node["otherColor"].getColor.color
   if node.contains "keyMapSet": result.keyMapSet = node["keyMapSet"].getStr
   if node.contains "keyMapIndex": result.keyMapIndex = node["keyMapIndex"].getInt
   if node.contains "state": result.stateName = node["state"].getStr
@@ -112,10 +115,12 @@ proc main() =
   for key, node in settingsJson["substitutions"]:
     var substitution = Substitution()
     if node.contains "string": substitution.string = node["string"].getStr
+    if node.contains "image": substitution.image = readImage node["image"].getStr
     if node.contains "translateX": substitution.translate.x = node["translateX"].getPixels
     if node.contains "translateY": substitution.translate.y = node["translateY"].getPixels
     if node.contains "scaleX": substitution.scale.x = node["scaleX"].getFloat
     if node.contains "scaleY": substitution.scale.y = node["scaleY"].getFloat
+    if node.contains "scale": substitution.scale = vec2 node["scale"].getFloat
     substitutions[key] = substitution
 
   let actions = keyLayout.child("actions")
@@ -144,25 +149,42 @@ proc main() =
                 var str = state.attr("output")
                 var strTranslate = vec2()
                 var strScale = vec2(1)
+                var labelImage: Image
                 if substitutions.contains str:
                   let substitution = substitutions[str]
                   if substitution.string != "": str = substitution.string
                   strTranslate = substitution.translate
                   strScale = substitution.scale
-                block fontsLoop:
-                  for font in legend.fonts:
-                    var hasGlyphs = true
-                    block runesLoop:
-                      for rune in str.runes:
-                        if not font.typeface.hasGlyph rune:
-                          hasGlyphs = false
-                          break runesLoop
-                    if hasGlyphs:
-                      var transform = translate(vec2(posX, posY) + legend.pos + strTranslate) * scale(strScale)
-                      image.fillText font, str, transform, hAlign = legend.align
-                      typefaces[font.typeface.filePath].uses += 1
-                      break fontsLoop
-                  echo &"Glyphs for {str} not found"
+                  labelImage = substitution.image
+                if labelImage == nil:
+                  block fontsLoop:
+                    for font in legend.fonts:
+                      var hasGlyphs = true
+                      block runesLoop:
+                        for rune in str.runes:
+                          if not font.typeface.hasGlyph rune:
+                            hasGlyphs = false
+                            break runesLoop
+                      if hasGlyphs:
+                        var transform = translate(vec2(posX, posY) + legend.pos + strTranslate) * scale(strScale)
+                        image.fillText font, str, transform, hAlign = legend.align
+                        typefaces[font.typeface.filePath].uses += 1
+                        break fontsLoop
+                    echo &"Glyphs for {str} not found"
+                else:
+                  let extraTranslate = (if legend.align == RightAlign: -ppcm * labelImage.width.float * strScale.x /
+                      labelImage.height.float else: 0)
+                  var transform = translate(vec2(posX + extratranslate, posY) + legend.pos + strTranslate) *
+                      scale(strScale * ppcm / labelImage.height.float)
+                  var newImage = labelImage.copy()
+                  var transformColor = mat3(legend.color.r, legend.color.g, legend.color.b,
+                      legend.otherColor.r, legend.otherColor.g, legend.otherColor.b, 0, 0, 0)
+                  for pixel in newImage.data.mitems:
+                    var v = transformColor * vec3(pixel.r.float, pixel.g.float, pixel.b.float)
+                    pixel.r = v.x.uint8
+                    pixel.g = v.y.uint8
+                    pixel.b = v.z.uint8
+                  image.draw newImage, transform
               do: discard
             do: echo "Action ", actionName, " not found"
             {.push warning[UnreachableCode]:off.}
