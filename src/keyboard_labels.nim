@@ -7,6 +7,8 @@ type
     fontPaths: seq[string]
     size: float
     color: Color
+    deadKeyColor: Color
+    deadKey2Color: Color
     otherColor: Color
     keyMapSet: string
     keyMapIndex: int
@@ -57,6 +59,8 @@ proc getLegend(node: JsonNode, base: Option[Legend] = none(Legend)): Legend =
     for arrayNode in node["fonts"]: result.fontPaths.add arrayNode.getStr
   if node.contains "size": result.size = node["size"].getPixels
   if node.contains "color": result.color = node["color"].getColor.color
+  if node.contains "deadKeyColor": result.deadKeyColor = node["deadKeyColor"].getColor.color
+  if node.contains "deadKey2Color": result.deadKey2Color = node["deadKey2Color"].getColor.color
   if node.contains "otherColor": result.otherColor = node["otherColor"].getColor.color
   if node.contains "keyMapSet": result.keyMapSet = node["keyMapSet"].getStr
   if node.contains "keyMapIndex": result.keyMapIndex = node["keyMapIndex"].getInt
@@ -96,7 +100,6 @@ proc main() =
         typefaces[fontPath] = TypefaceData(typeface: typeface)
         typeface)
       font.size = legend.size
-      font.paint.color = legend.color
       legend.fonts.add font
     block findKeyMaps:
       var mapSetName = legend.keyMapSet
@@ -146,7 +149,15 @@ proc main() =
             let actionName = keyElement.attr("action")
             findChild actions, action, "action", "id", actionName:
               findChild action, state, "when", "state", legend.stateName:
-                var str = state.attr("output")
+                let nextState = state.attr("next")
+                var str: string
+                var color: Color
+                if nextState == "":
+                  str = state.attr("output")
+                  color = legend.color
+                else:
+                  str = "dead_" & nextState
+                  color = legend.deadKeyColor
                 var strTranslate = vec2()
                 var strScale = vec2(1)
                 var labelImage: Image
@@ -167,6 +178,7 @@ proc main() =
                             break runesLoop
                       if hasGlyphs:
                         var transform = translate(vec2(posX, posY) + legend.pos + strTranslate) * scale(strScale)
+                        font.paint.color = color
                         image.fillText font, str, transform, hAlign = legend.align
                         typefaces[font.typeface.filePath].uses += 1
                         break fontsLoop
@@ -177,7 +189,7 @@ proc main() =
                   var transform = translate(vec2(posX + extratranslate, posY) + legend.pos + strTranslate) *
                       scale(strScale * ppcm / labelImage.height.float)
                   var newImage = labelImage.copy()
-                  var transformColor = mat3(legend.color.r, legend.color.g, legend.color.b,
+                  var transformColor = mat3(color.r, color.g, color.b,
                       legend.otherColor.r, legend.otherColor.g, legend.otherColor.b, 0, 0, 0)
                   for pixel in newImage.data.mitems:
                     var v = transformColor * vec3(pixel.r.float, pixel.g.float, pixel.b.float)
