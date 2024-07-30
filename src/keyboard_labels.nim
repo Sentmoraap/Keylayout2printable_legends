@@ -14,6 +14,7 @@ type
     keyMapIndex: int
     stateName: string
     pos: Vec2
+    pos2: Vec2
     align: HorizontalAlignment
 
     # Program data
@@ -54,7 +55,9 @@ func getColor(node: JsonNode): ColorRGBA =
 proc getPixels(x: JsonNode): float = ppcm * x.getFloat
 
 proc getLegendPlace(node: JsonNode; base: Option[LegendPlace] = none(LegendPlace)): LegendPlace =
-  if base.isSome : result = base.unsafeGet
+  result.pos = vec2(system.Nan)
+  result.pos2 = vec2(system.Nan)
+  if base.isSome: result = base.unsafeGet
   if node.contains "fonts":
     result.fontPaths.setLen 0
     for arrayNode in node["fonts"]: result.fontPaths.add arrayNode.getStr
@@ -68,6 +71,8 @@ proc getLegendPlace(node: JsonNode; base: Option[LegendPlace] = none(LegendPlace
   if node.contains "state": result.stateName = node["state"].getStr
   if node.contains "posX": result.pos.x = node["posX"].getPixels
   if node.contains "posY": result.pos.y = node["posY"].getPixels
+  if node.contains "pos2X": result.pos2.x = node["pos2X"].getPixels
+  if node.contains "pos2Y": result.pos2.y = node["pos2Y"].getPixels
   if node.contains "align": result.align.fromJson node["align"]
 
 proc getSubstitution(node: JsonNode): LegendItem =
@@ -85,7 +90,15 @@ proc getSubstitution(node: JsonNode): LegendItem =
   if node.contains "scaleY": result.scale.y = node["scaleY"].getFloat
   if node.contains "scale": result.scale = vec2 node["scale"].getFloat
 
-proc renderLegend(image: Image; place: LegendPlace; item: LegendItem; color: Color; posX, posY: float) =
+proc renderLegend(image: Image; place: LegendPlace; item: LegendItem; color: Color; posX, posY: float,
+    isDeadKey2: bool) =
+  let placePos = (
+    var tempPos = place.pos
+    if isDeadKey2:
+      if place.pos2.x == place.pos2.x: tempPos.x = place.pos2.x
+      if place.pos2.y == place.pos2.y: tempPos.y = place.pos2.y
+    tempPos
+  )
   if item.image == nil:
     block fontsLoop:
       for font in place.fonts:
@@ -96,7 +109,7 @@ proc renderLegend(image: Image; place: LegendPlace; item: LegendItem; color: Col
               hasGlyphs = false
               break runesLoop
         if hasGlyphs:
-          var transform = translate(vec2(posX, posY) + place.pos + item.translate) * scale(item.scale)
+          var transform = translate(vec2(posX, posY) + placePos + item.translate) * scale(item.scale)
           font.paint.color = color
           image.fillText font, item.string, transform, hAlign = place.align
           typefaces[font.typeface.filePath].uses += 1
@@ -105,7 +118,7 @@ proc renderLegend(image: Image; place: LegendPlace; item: LegendItem; color: Col
   else:
     let extraTranslate = (if place.align == RightAlign: -ppcm * item.image.width.float * item.scale.x /
         item.image.height.float else: 0)
-    var transform = translate(vec2(posX + extratranslate, posY) + place.pos + item.translate) *
+    var transform = translate(vec2(posX + extratranslate, posY) + placePos + item.translate) *
         scale(item.scale * ppcm / item.image.height.float)
     var newImage = item.image.copy()
     var transformColor = mat3(color.r, color.g, color.b,
@@ -188,28 +201,39 @@ proc main() =
           findChild keyMap, keyElement, "key", "code", keyCode:
             let actionName = keyElement.attr("action")
             findChild actions, action, "action", "id", actionName:
-              findChild action, state, "when", "state", legendPlace.stateName:
-                let nextState = state.attr("next")
-                var legendItem: LegendItem
-                var color: Color
-                if nextState == "":
-                  legendItem.string = state.attr("output")
-                  color = legendPlace.color
-                else:
-                  legendItem.string = "dead_" & nextState
-                  color = legendPlace.deadKeyColor
-                # it should be intitialized but it's not
-                legendItem.translate = vec2()
-                legendItem.scale = vec2(1)
-                legendItem.image = nil
-                if substitutions.contains legendItem.string:
-                  for substitution in substitutions[legendItem.string]:
-                    var overridenLegend = substitution
-                    if substitution.string == "": overridenLegend.string = legendItem.string
-                    image.renderLegend legendPlace, overridenLegend, color, posX, posY
-                else:
-                  image.renderLegend legendPlace, legendItem, color, posX, posY
-              do: discard
+              var stateName = legendPlace.stateName
+              var isDeadKey2 = false
+              block loopDeadKeys:
+                while true:
+                  var isDeadKey = false
+                  findChild action, state, "when", "state", stateName:
+                    let nextState = state.attr("next")
+                    var legendItem: LegendItem
+                    var color: Color
+                    if nextState == "":
+                      legendItem.string = state.attr("output")
+                      color = legendPlace.color
+                    else:
+                      isDeadKey = true
+                      legendItem.string = "dead_" & nextState
+                      stateName = nextState
+                      color = if isDeadKey2: legendPlace.deadKey2Color else: legendPlace.deadKeyColor
+                    if isDeadKey2 and not isDeadKey: break loopDeadKeys
+                    # it should be intitialized but it's not
+                    legendItem.translate = vec2()
+                    legendItem.scale = vec2(1)
+                    legendItem.image = nil
+                    if substitutions.contains legendItem.string:
+                      for substitution in substitutions[legendItem.string]:
+                        var overridenLegend = substitution
+                        if substitution.string == "": overridenLegend.string = legendItem.string
+                        image.renderLegend legendPlace, overridenLegend, color, posX, posY, isDeadKey2
+                    else:
+                      if isDeadKey:
+                        echo "No substitution for ", legendItem.string
+                      image.renderLegend legendPlace, legendItem, color, posX, posY, isDeadKey2
+                  do: discard
+                  if not isDeadKey or isDeadKey2: break loopDeadKeys else: isDeadKey2 = true
             do: echo "Action ", actionName, " not found"
             {.push warning[UnreachableCode]:off.}
             break findKeyMaps
@@ -221,8 +245,7 @@ proc main() =
       posY += posYAdd
     else: posX += posXAdd
 
-  for path, typeface in typefaces:
-    echo &"Font {path} used {typeface.uses} time(s)"
+  for path, typeface in typefaces: echo &"Font {path} used {typeface.uses} time(s)"
 
   echo "Saving file"
 
