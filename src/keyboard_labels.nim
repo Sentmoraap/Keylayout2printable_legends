@@ -19,7 +19,7 @@ type
 
     # Program data
     keyMaps: seq[XmlNode]
-    fonts: seq[Font]
+    font: Font
 
   TypefaceData = object
     uses: int = 0
@@ -100,21 +100,21 @@ proc renderLegend(image: Image; place: LegendPlace; item: LegendItem; color: Col
     tempPos
   )
   if item.image == nil:
-    block fontsLoop:
-      for font in place.fonts:
-        var hasGlyphs = true
-        block runesLoop:
-          for rune in item.string.runes:
-            if not font.typeface.hasGlyph rune:
-              hasGlyphs = false
-              break runesLoop
-        if hasGlyphs:
-          var transform = translate(vec2(posX, posY) + placePos + item.translate) * scale(item.scale)
-          font.paint.color = color
-          image.fillText font, item.string, transform, hAlign = place.align
-          typefaces[font.typeface.filePath].uses += 1
+    var transform = translate(vec2(posX, posY) + placePos + item.translate) * scale(item.scale)
+    place.font.paint.color = color
+    image.fillText place.font, item.string, transform, hAlign = place.align
+    let typeface = place.font.typeface
+    for rune in item.string.runes:
+      block fontsLoop:
+        if typeface.hasGlyph rune:
+          typefaces[typeface.filepath].uses += 1
           break fontsLoop
-      echo &"Glyphs for {item.string} not found"
+        else:
+          for fallback in typeface.fallbacks:
+            if fallback.hasGlyph rune:
+              typefaces[fallback.filepath].uses += 1
+              break fontsLoop
+        echo &"Glyph for {rune} not found"
   else:
     let extraTranslate = (if place.align == RightAlign: -ppcm * item.image.width.float * item.scale.x /
         item.image.height.float else: 0)
@@ -129,6 +129,13 @@ proc renderLegend(image: Image; place: LegendPlace; item: LegendItem; color: Col
       pixel.g = v.y.uint8
       pixel.b = v.z.uint8
     image.draw newImage, transform
+
+proc getTypeface(path: string): Typeface =
+  if typefaces.contains path: typefaces[path].typeface
+  else:
+    let typeface = readTypeface path
+    typefaces[path] = TypefaceData(typeface: typeface)
+    typeface
 
 proc main() =
   echo "Reading data"
@@ -154,14 +161,14 @@ proc main() =
   var legendPlaces = newSeq[LegendPlace]()
   for legendPlace in keysNode["legends"]: legendPlaces.add legendPlace.getLegendPlace some(baseLegendPlace)
   for legendPlace in legendPlaces.mitems:
-    for fontPath in legendPlace.fontPaths:
-      var font = newFont (if typefaces.contains fontPath: typefaces[fontPath].typeface
+    for index, fontPath in legendPlace.fontPaths:
+      if index == 0:
+        discard getTypeface fontPath
+        legendPlace.font = fontPath.readTypeface.newFont
       else:
-        let typeface = readTypeface fontPath
-        typefaces[fontPath] = TypefaceData(typeface: typeface)
-        typeface)
-      font.size = legendPlace.size
-      legendPlace.fonts.add font
+        legendPlace.font.typeface.fallbacks.add fontPath.getTypeface
+    legendPlace.font.size = legendPlace.size
+
     block findKeyMaps:
       var mapSetName = legendPlace.keyMapSet
       var keyMapIndex = legendPlace.keyMapIndex
@@ -257,3 +264,4 @@ main()
 
 # TODO: error checking
 # TODO: check inneficient memory usages
+# TODO: comments
