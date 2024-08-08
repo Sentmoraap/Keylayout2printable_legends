@@ -2,6 +2,8 @@ import std/[json, jsonutils, options, sequtils, strformat, strutils, tables, uni
 import pixie
 
 type
+  MergeType {.pure.} = enum NO, SAME, UPPERCASE, LOWERCASE
+
   LegendPlace = object
     # JSON data
     fontPaths: seq[string]
@@ -16,6 +18,8 @@ type
     pos: Vec2
     pos2: Vec2
     align: HorizontalAlignment
+    mergeType: MergeType
+    merge: array[2, int]
 
     # Program data
     keyMaps: seq[XmlNode]
@@ -30,6 +34,7 @@ type
     translate = vec2()
     scale = vec2(1)
     image: Image
+    color: Color
 
 template findChild[T](node:XmlNode; child:untyped; elementTag:string; attrName:string; attrValue:T; success: untyped;
     failure: untyped) =
@@ -48,6 +53,8 @@ template findChild[T](node:XmlNode; child:untyped; elementTag:string; attrName:s
 
 var ppcm: float
 var typefaces: Table[string, TypefaceData]
+var substitutions = initTable[string, seq[LegendItem]]()
+
 
 func getColor(node: JsonNode): ColorRGBA =
   rgba node["r"].getInt.uint8, node["g"].getInt.uint8, node["b"].getInt.uint8, 255
@@ -57,6 +64,7 @@ proc getPixels(x: JsonNode): float = ppcm * x.getFloat
 proc getLegendPlace(node: JsonNode; base: Option[LegendPlace] = none(LegendPlace)): LegendPlace =
   result.pos = vec2(system.Nan)
   result.pos2 = vec2(system.Nan)
+  result.mergeType = NO
   if base.isSome: result = base.unsafeGet
   if node.contains "fonts":
     result.fontPaths.setLen 0
@@ -74,6 +82,16 @@ proc getLegendPlace(node: JsonNode; base: Option[LegendPlace] = none(LegendPlace
   if node.contains "pos2X": result.pos2.x = node["pos2X"].getPixels
   if node.contains "pos2Y": result.pos2.y = node["pos2Y"].getPixels
   if node.contains "align": result.align.fromJson node["align"]
+  if node.contains "mergeRule": result.mergeType.fromJson node["mergeRule"]
+  if node.contains "merge":
+    for i in 0..1: result.merge[i] = node["merge"][i].getInt
+
+proc getTypeface(path: string): Typeface =
+  if typefaces.contains path: typefaces[path].typeface
+  else:
+    let typeface = readTypeface path
+    typefaces[path] = TypefaceData(typeface: typeface)
+    typeface
 
 proc getSubstitution(node: JsonNode): LegendItem =
   # result is not intitialized with default values, I don't kynow why
@@ -90,18 +108,34 @@ proc getSubstitution(node: JsonNode): LegendItem =
   if node.contains "scaleY": result.scale.y = node["scaleY"].getFloat
   if node.contains "scale": result.scale = vec2 node["scale"].getFloat
 
-proc renderLegend(image: Image; place: LegendPlace; item: LegendItem; color: Color; posX, posY: float,
-    isDeadKey2: bool) =
+proc getLegendItem(node: XmlNode; currentState: string; normalColor, deadKeyColor: Color):
+    tuple[item: LegendItem; isDeadKey: bool; nextState: string] =
+  result.nextState = node.attr("next")
+  if result.nextState == "" or result.nextState == currentState:
+    result.isDeadKey = false
+    result.item.string = node.attr("output")
+    result.item.color = normalColor
+  else:
+    result.isDeadKey = true
+    result.item.string = "dead_" & result.nextState
+    result.item.color = deadKeyColor
+  # TODO: does it need initialization?
+  result.item.translate = vec2()
+  result.item.scale = vec2(1)
+  result.item.image = nil
+
+proc renderLegend(image: Image; place: LegendPlace; item: LegendItem; posX, posY: float,
+    is2ndPlace: bool) =
   let placePos = (
     var tempPos = place.pos
-    if isDeadKey2:
+    if is2ndPlace:
       if place.pos2.x == place.pos2.x: tempPos.x = place.pos2.x
       if place.pos2.y == place.pos2.y: tempPos.y = place.pos2.y
     tempPos
   )
   if item.image == nil:
     var transform = translate(vec2(posX, posY) + placePos + item.translate) * scale(item.scale)
-    place.font.paint.color = color
+    place.font.paint.color = item.color
     image.fillText place.font, item.string, transform, hAlign = place.align
     let typeface = place.font.typeface
     for rune in item.string.runes:
@@ -121,7 +155,7 @@ proc renderLegend(image: Image; place: LegendPlace; item: LegendItem; color: Col
     var transform = translate(vec2(posX + extratranslate, posY) + placePos + item.translate) *
         scale(item.scale * ppcm / item.image.height.float)
     var newImage = item.image.copy()
-    var transformColor = mat3(color.r, color.g, color.b,
+    var transformColor = mat3(item.color.r, item.color.g, item.color.b,
         place.otherColor.r, place.otherColor.g, place.otherColor.b, 0, 0, 0)
     for pixel in newImage.data.mitems:
       var v = transformColor * vec3(pixel.r.float, pixel.g.float, pixel.b.float)
@@ -130,12 +164,20 @@ proc renderLegend(image: Image; place: LegendPlace; item: LegendItem; color: Col
       pixel.b = v.z.uint8
     image.draw newImage, transform
 
-proc getTypeface(path: string): Typeface =
-  if typefaces.contains path: typefaces[path].typeface
+proc renderLegendSubstitutions(image: Image; place: LegendPlace; item: LegendItem; posX, posY: float;
+    isDeadKey, is2ndPlace: bool): bool =
+  if substitutions.contains item.string:
+    for substitution in substitutions[item.string]:
+      var overridenLegend = substitution
+      if substitution.string == "": overridenLegend.string = item.string
+      overridenLegend.color = item.color
+      image.renderLegend place, overridenLegend, posX, posY, is2ndPlace
+    substitutions[item.string].len > 0
   else:
-    let typeface = readTypeface path
-    typefaces[path] = TypefaceData(typeface: typeface)
-    typeface
+    if isDeadKey:
+      echo "No substitution for ", item.string
+    image.renderLegend place, item, posX, posY, is2ndPlace
+    true
 
 proc main() =
   echo "Reading data"
@@ -182,7 +224,6 @@ proc main() =
           do: quit &"keyMap {keyMapIndex} in keyMapSet {mapSetName} not found"
         do: quit &"keyMapSet {mapSetName} not found"
 
-  var substitutions = initTable[string, seq[LegendItem]]()
   for key, node in settingsJson["substitutions"]:
     substitutions[key] = if node.kind == JArray: node.mapIt it.getSubstitution else: @[node.getSubstitution]
 
@@ -202,51 +243,65 @@ proc main() =
     path.rect(posX, posY, keyWidth, keyHeight)
     image.fillPath path, keyBackground
     let keyCode = code.getInt
-    for legendPlace in legendPlaces:
-      block findKeyMaps:
-        for keyMap in legendPlace.keyMaps:
-          findChild keyMap, keyElement, "key", "code", keyCode:
-            let actionName = keyElement.attr("action")
-            findChild actions, action, "action", "id", actionName:
-              var stateName = legendPlace.stateName
-              var isDeadKey2 = false
-              block loopDeadKeys:
-                while true:
-                  var isDeadKey = false
-                  findChild action, state, "when", "state", stateName:
-                    let nextState = state.attr("next")
-                    var legendItem: LegendItem
-                    var color: Color
-                    if nextState == "":
-                      legendItem.string = state.attr("output")
-                      color = legendPlace.color
-                    else:
-                      isDeadKey = true
-                      legendItem.string = "dead_" & nextState
-                      stateName = nextState
-                      color = if isDeadKey2: legendPlace.deadKey2Color else: legendPlace.deadKeyColor
-                    if isDeadKey2 and not isDeadKey: break loopDeadKeys
-                    # it should be intitialized but it's not
-                    legendItem.translate = vec2()
-                    legendItem.scale = vec2(1)
-                    legendItem.image = nil
-                    if substitutions.contains legendItem.string:
-                      for substitution in substitutions[legendItem.string]:
-                        var overridenLegend = substitution
-                        if substitution.string == "": overridenLegend.string = legendItem.string
-                        image.renderLegend legendPlace, overridenLegend, color, posX, posY, isDeadKey2
-                    else:
-                      if isDeadKey:
-                        echo "No substitution for ", legendItem.string
-                      image.renderLegend legendPlace, legendItem, color, posX, posY, isDeadKey2
-                  do: discard
-                  if not isDeadKey or isDeadKey2: break loopDeadKeys else: isDeadKey2 = true
-            do: echo "Action ", actionName, " not found"
-            {.push warning[UnreachableCode]:off.}
-            break findKeyMaps
-            {.pop.}
-          do: discard
-        echo "Key ", keyCode, " not found"
+    var legendItems = newSeq[array[2, LegendItem]](legendPlaces.len)
+    for placeIndex, legendPlace in legendPlaces:
+      if legendPlace.mergeType == NO:
+        block findKeyMaps:
+          for keyMap in legendPlace.keyMaps:
+            findChild keyMap, keyElement, "key", "code", keyCode:
+              let actionName = keyElement.attr("action")
+              findChild actions, action, "action", "id", actionName:
+                let stateName = legendPlace.stateName
+                var hasDeadKey2 = false
+                findChild action, state, "when", "state", stateName:
+                  var legendItem2: LegendItem
+                  let (legendItem, isDeadKey, nextState) = getLegendItem(state, stateName, legendPlace.color,
+                      legendPlace.deadKeyColor)
+                  if isDeadKey:
+                    findChild action, state2, "when", "state", nextState:
+                      (legendItem2, hasDeadKey2) = getLegendItem(state2, nextState, legendPlace.color,
+                          legendPlace.deadKey2Color)
+                    do: discard
+                  if not hasDeadKey2:
+                    legendItem2.string = ""
+                  legendItems[placeIndex] = [legendItem, legendItem2]
+                do: discard
+              do: echo "Action ", actionName, " not found"
+              {.push warning[UnreachableCode]:off.}
+              break findKeyMaps
+              {.pop.}
+            do: discard
+          echo "Key ", keyCode, " not found"
+          # TODO: normalize unicode strings
+      else:
+        let str0 = legendItems[legendPlace.merge[0]][0].string
+        let str1 = legendItems[legendPlace.merge[1]][0].string
+        let merge = if legendPlace.mergeType == SAME:
+          str0 == str1
+        else:
+          case legendPlace.mergeType:
+            of NO, SAME: # Unreachable
+              assert false
+              false
+            of UPPERCASE:
+              str0 == str1 or str0.toLower == str1 or str0 == str1.toUpper
+            of LOWERCASE:
+              str0 == str1 or str0.toUpper == str1 or str0 == str1.toLower
+        if merge:
+          legendItems[placeIndex][0].string = legendItems[legendPlace.merge[0]][0].string
+          legendItems[placeIndex][0].color = legendPlace.color
+          for i in 0..1: legendItems[legendPlace.merge[i]][0].string = ""
+        else:
+          legendItems[placeIndex][0].string = ""
+        #legendItems[placeIndex][0].translate = vec2(0)
+        #legendItems[placeIndex][0].scale = vec2(1)
+        #legendItems[placeIndex][1].string = ""
+    for placeIndex, legendPlace in legendPlaces:
+      let second = addr legendItems[placeIndex][1]
+      let renderedSomething = second.string.len > 0 and
+          image.renderLegendSubstitutions(legendPlace, second[], posX, posY, true, true)
+      discard image.renderLegendSubstitutions(legendPlace, legendItems[placeIndex][0], posX, posY, false,
+          legendPlace.align == RightAlign and not renderedSomething)
     if posX + 2 * posXAdd >= imageWidth.float:
       posX = padding
       posY += posYAdd
