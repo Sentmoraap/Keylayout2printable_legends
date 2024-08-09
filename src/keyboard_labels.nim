@@ -6,6 +6,7 @@ type
 
   LegendPlace = object
     # JSON data
+    layoutPath: string
     fontPaths: seq[string]
     size: float
     color: Color
@@ -24,6 +25,7 @@ type
     # Program data
     keyMaps: seq[XmlNode]
     font: Font
+    actions: XmlNode
 
   TypefaceData = object
     uses: int = 0
@@ -74,6 +76,7 @@ proc getLegendPlace(node: JsonNode; base: Option[LegendPlace] = none(LegendPlace
   if node.contains "deadKeyColor": result.deadKeyColor = node["deadKeyColor"].getColor.color
   if node.contains "deadKey2Color": result.deadKey2Color = node["deadKey2Color"].getColor.color
   if node.contains "otherColor": result.otherColor = node["otherColor"].getColor.color
+  if node.contains "keyLayout": result.layoutPath = node["keyLayout"].getStr
   if node.contains "keyMapSet": result.keyMapSet = node["keyMapSet"].getStr
   if node.contains "keyMapIndex": result.keyMapIndex = node["keyMapIndex"].getInt
   if node.contains "state": result.stateName = node["state"].getStr
@@ -183,7 +186,7 @@ proc main() =
   echo "Reading data"
 
   let settingsJson = json.parsefile "settings.json" # TODO: parameter
-  let keyLayout = loadXml "Optimot Qwerty.keylayout" # TODO: parameter
+  var keyLayouts = initTable[string, XmlNode]()
 
   let imageNode = settingsJson["image"]
   ppcm = imageNode["ppcm"].getFloat
@@ -215,6 +218,12 @@ proc main() =
       var mapSetName = legendPlace.keyMapSet
       var keyMapIndex = legendPlace.keyMapIndex
       while true:
+        let keyLayout = if keyLayouts.contains legendPlace.layoutPath: keyLayouts[legendPlace.layoutPath]
+        else:
+          let newKeyLayout = loadXml legendPlace.layoutPath
+          keyLayouts[legendPlace.layoutPath] = newKeyLayout
+          newKeyLayout
+        legendPlace.actions = keyLayout.child("actions")
         findChild keyLayout, keyMapSet, "keyMapSet", "id", mapSetName:
           findChild keyMapSet, keyMap, "keyMap", "index", keyMapIndex:
             legendPlace.keyMaps.add keyMap
@@ -226,8 +235,6 @@ proc main() =
 
   for key, node in settingsJson["substitutions"]:
     substitutions[key] = if node.kind == JArray: node.mapIt it.getSubstitution else: @[node.getSubstitution]
-
-  let actions = keyLayout.child("actions")
 
   echo "Generating image"
 
@@ -250,26 +257,32 @@ proc main() =
           for keyMap in legendPlace.keyMaps:
             findChild keyMap, keyElement, "key", "code", keyCode:
               let actionName = keyElement.attr("action")
-              findChild actions, action, "action", "id", actionName:
-                let stateName = legendPlace.stateName
-                var hasDeadKey2 = false
-                findChild action, state, "when", "state", stateName:
-                  var legendItem2: LegendItem
-                  let (legendItem, isDeadKey, nextState) = getLegendItem(state, stateName, legendPlace.color,
-                      legendPlace.deadKeyColor)
-                  if isDeadKey:
-                    findChild action, state2, "when", "state", nextState:
-                      (legendItem2, hasDeadKey2) = getLegendItem(state2, nextState, legendPlace.color,
-                          legendPlace.deadKey2Color)
-                    do: discard
-                  if not hasDeadKey2:
-                    legendItem2.string = ""
-                  legendItems[placeIndex] = [legendItem, legendItem2]
-                do: discard
-              do: echo "Action ", actionName, " not found"
-              {.push warning[UnreachableCode]:off.}
-              break findKeyMaps
-              {.pop.}
+              if actionName.len > 0:
+                findChild legendPlace.actions, action, "action", "id", actionName:
+                  let stateName = legendPlace.stateName
+                  var hasDeadKey2 = false
+                  findChild action, state, "when", "state", stateName:
+                    var legendItem2: LegendItem
+                    let (legendItem, isDeadKey, nextState) = getLegendItem(state, stateName, legendPlace.color,
+                        legendPlace.deadKeyColor)
+                    if isDeadKey:
+                      findChild action, state2, "when", "state", nextState:
+                        (legendItem2, hasDeadKey2) = getLegendItem(state2, nextState, legendPlace.color,
+                            legendPlace.deadKey2Color)
+                      do: discard
+                    if not hasDeadKey2:
+                      legendItem2.string = ""
+                    legendItems[placeIndex] = [legendItem, legendItem2]
+                  do: discard
+                do: echo "Action ", actionName, " not found"
+                {.push warning[UnreachableCode]:off.}
+                break findKeyMaps
+                {.pop.}
+              else:
+                legendItems[placeIndex][0].string = keyElement.attr("output")
+                legendItems[placeIndex][0].color = legendPlace.color
+                legendItems[placeIndex][1].string = ""
+                break findKeyMaps
             do: discard
           echo "Key ", keyCode, " not found"
           # TODO: normalize unicode strings
@@ -293,9 +306,6 @@ proc main() =
           for i in 0..1: legendItems[legendPlace.merge[i]][0].string = ""
         else:
           legendItems[placeIndex][0].string = ""
-        #legendItems[placeIndex][0].translate = vec2(0)
-        #legendItems[placeIndex][0].scale = vec2(1)
-        #legendItems[placeIndex][1].string = ""
     for placeIndex, legendPlace in legendPlaces:
       let second = addr legendItems[placeIndex][1]
       let renderedSomething = second.string.len > 0 and
