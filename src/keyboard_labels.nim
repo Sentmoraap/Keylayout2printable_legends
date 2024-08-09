@@ -34,6 +34,7 @@ type
   LegendItem = object
     string: string
     translate = vec2()
+    translateMirrored = vec2()
     scale = vec2(1)
     image: Image
     color: Color
@@ -100,6 +101,7 @@ proc getSubstitution(node: JsonNode): LegendItem =
   # result is not intitialized with default values, I don't kynow why
   result.string = ""
   result.translate = vec2()
+  result.translateMirrored = vec2()
   result.scale = vec2(1)
   result.image = nil
 
@@ -107,6 +109,8 @@ proc getSubstitution(node: JsonNode): LegendItem =
   if node.contains "image": result.image = readImage node["image"].getStr
   if node.contains "translateX": result.translate.x = node["translateX"].getPixels
   if node.contains "translateY": result.translate.y = node["translateY"].getPixels
+  if node.contains "translateMirroredX": result.translateMirrored.x = node["translateMirroredX"].getPixels
+  if node.contains "translateMirroredY": result.translateMirrored.y = node["translateMirroredY"].getPixels
   if node.contains "scaleX": result.scale.x = node["scaleX"].getFloat
   if node.contains "scaleY": result.scale.y = node["scaleY"].getFloat
   if node.contains "scale": result.scale = vec2 node["scale"].getFloat
@@ -136,8 +140,17 @@ proc renderLegend(image: Image; place: LegendPlace; item: LegendItem; posX, posY
       if place.pos2.y == place.pos2.y: tempPos.y = place.pos2.y
     tempPos
   )
+  let translateMirrored = vec2(item.translateMirrored.x * (case place.align:
+      of LeftAlign:
+        1
+      of CenterAlign:
+        0
+      of RightAlign:
+        -1
+      ), item.translateMirrored.y)
+
   if item.image == nil:
-    var transform = translate(vec2(posX, posY) + placePos + item.translate) * scale(item.scale)
+    var transform = translate(vec2(posX, posY) + placePos + item.translate + translateMirrored) * scale(item.scale)
     place.font.paint.color = item.color
     image.fillText place.font, item.string, transform, hAlign = place.align
     let typeface = place.font.typeface
@@ -155,7 +168,7 @@ proc renderLegend(image: Image; place: LegendPlace; item: LegendItem; posX, posY
   else:
     let extraTranslate = (if place.align == RightAlign: -ppcm * item.image.width.float * item.scale.x /
         item.image.height.float else: 0)
-    var transform = translate(vec2(posX + extratranslate, posY) + placePos + item.translate) *
+    var transform = translate(vec2(posX + extratranslate, posY) + placePos + item.translate + translateMirrored) *
         scale(item.scale * ppcm / item.image.height.float)
     var newImage = item.image.copy()
     var transformColor = mat3(item.color.r, item.color.g, item.color.b,
