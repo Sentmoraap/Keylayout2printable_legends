@@ -208,8 +208,8 @@ proc main() =
   let imageBackground = imageNode["background"].getColor
 
   let keysNode = settingsJson["keys"]
-  let keyWidth = keysNode["width"].getPixels
-  let keyHeight = keysNode["height"].getPixels
+  let keyTopSize = keysNode["topSize"].getPixels
+  let keySideSize = keysNode["sideSize"].getPixels
   let keyBackground = keysNode["background"].getColor
   let padding = keysNode["padding"].getPixels
   let codesArray = keysNode["codes"]
@@ -256,11 +256,13 @@ proc main() =
 
   var posX = padding
   var posY = padding
-  var posXAdd = keyWidth + padding
-  var posYAdd = keyHeight + padding
+  let keyTotalSize = keyTopSize + keySideSize * 2
+  let posXAdd = keyTotalSize + padding
+  let posYAdd = keyTotalSize + padding
   for code in codesArray:
     var path = newPath()
-    path.rect(posX, posY, keyWidth, keyHeight)
+    path.rect(posX + keySideSize, posY, keyTopSize, keyTotalSize)
+    path.rect(posX, posY + keySideSize, keyTotalSize, keyTopSize)
     image.fillPath path, keyBackground
     let keyCode = code.getInt
     var legendItems = newSeq[array[2, LegendItem]](legendPlaces.len)
@@ -322,9 +324,9 @@ proc main() =
     for placeIndex, legendPlace in legendPlaces:
       let second = addr legendItems[placeIndex][1]
       let renderedSomething = second.string.len > 0 and
-          image.renderLegendSubstitutions(legendPlace, second[], posX, posY, true, true)
-      discard image.renderLegendSubstitutions(legendPlace, legendItems[placeIndex][0], posX, posY, false,
-          legendPlace.align == RightAlign and not renderedSomething)
+          image.renderLegendSubstitutions(legendPlace, second[], posX + keySideSize, posY + keySideSize, true, true)
+      discard image.renderLegendSubstitutions(legendPlace, legendItems[placeIndex][0],
+          posX + keySideSize, posY + keySideSize, false, legendPlace.align == RightAlign and not renderedSomething)
     if posX + 2 * posXAdd >= imageWidth.float:
       posX = padding
       posY += posYAdd
