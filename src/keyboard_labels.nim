@@ -208,7 +208,8 @@ proc main() =
   let imageBackground = imageNode["background"].getColor
 
   let keysNode = settingsJson["keys"]
-  let keyTopSize = keysNode["topSize"].getPixels
+  let keyTopWidth = keysNode["topWidth"].getPixels
+  let keyTopHeight = keysNode["topHeight"].getPixels
   let keySideSize = keysNode["sideSize"].getPixels
   let keyBackground = keysNode["background"].getColor
   let padding = keysNode["padding"].getPixels
@@ -256,13 +257,14 @@ proc main() =
 
   var posX = padding
   var posY = padding
-  let keyTotalSize = keyTopSize + keySideSize * 2
-  let posXAdd = keyTotalSize + padding
-  let posYAdd = keyTotalSize + padding
+  let keyTotalWidth = keyTopWidth + keySideSize * 2
+  let keyTotalHeight = keyTopHeight + keySideSize * 2
+  let posXAdd = keyTotalWidth + padding
+  let posYAdd = keyTotalHeight + padding
   for code in codesArray:
     var path = newPath()
-    path.rect(posX + keySideSize, posY, keyTopSize, keyTotalSize)
-    path.rect(posX, posY + keySideSize, keyTotalSize, keyTopSize)
+    path.rect(posX + keySideSize, posY, keyTopWidth, keyTotalHeight)
+    path.rect(posX, posY + keySideSize, keyTotalWidth, keyTopHeight)
     image.fillPath path, keyBackground
     let keyCode = code.getInt
     var legendItems = newSeq[array[2, LegendItem]](legendPlaces.len)
@@ -282,7 +284,7 @@ proc main() =
                         legendPlace.deadKeyColor)
                     if isDeadKey:
                       findChild action, state2, "when", "state", nextState:
-                        (legendItem2, hasDeadKey2) = getLegendItem(state2, nextState, legendPlace.color,
+                        (legendItem2, hasDeadKey2, _) = getLegendItem(state2, nextState, legendPlace.color,
                             legendPlace.deadKey2Color)
                       do: discard
                     if not hasDeadKey2:
