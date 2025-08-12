@@ -313,9 +313,9 @@ proc main() =
             of NO, SAME: # Unreachable
               assert false
               false
-            of UPPERCASE:
+            of MergeType.UPPERCASE:
               str0 == str1 or str0.toLower == str1 or str0 == str1.toUpper
-            of LOWERCASE:
+            of MergeType.LOWERCASE:
               str0 == str1 or str0.toUpper == str1 or str0 == str1.toLower
         if merge:
           legendItems[placeIndex][0].string = legendItems[legendPlace.merge[0]][0].string
