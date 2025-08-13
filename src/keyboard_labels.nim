@@ -1,4 +1,4 @@
-import std/[json, jsonutils, options, sequtils, strformat, strutils, tables, unicode, xmlparser, xmltree]
+import std/[json, jsonutils, options, os, parseopt, sequtils, strformat, strutils, tables, unicode, xmlparser, xmltree]
 import pixie
 
 type
@@ -196,9 +196,47 @@ proc renderLegendSubstitutions(image: Image; place: LegendPlace; item: LegendIte
     true
 
 proc main() =
-  echo "Reading data"
+  # Handle command-line arguments
+  var settingsFile = "settings.json"
+  var outFile = "out.png"
+  var writeHelp = false
+  var validCmdArguments = true
+  var verbose = false
 
-  let settingsJson = json.parsefile "settings.json" # TODO: parameter
+  for kind, key, val in getopt():
+    case kind:
+      of cmdArgument:
+        validCmdArguments = false
+      of cmdLongOption:
+        case key:
+          of "help": writeHelp = true
+          of "out": outFile = val
+          of "settings": settingsFile = val
+          of "verbose": verbose = true
+          else: validCmdArguments = false
+      of cmdShortOption:
+        case key:
+          of "h": writeHelp = true
+          of "o": outFile = val
+          of "s": settingsFile = val
+          of "v": verbose = true
+          else: validCmdArguments = false
+      of cmdEnd: assert false # cannot happen
+
+  if writeHelp or not validCmdArguments:
+    echo "Usage: " & getAppFileName().extractFilename() & " [options]"
+    echo """
+Options:
+  -h, --help               show this help
+  -s, --settings=PATH      use the settings JSON file at PATH
+  -o, --output=PATH        write to the png file at PATH
+  -v, --verbose            display info
+"""
+    quit(if validCmdArguments: QuitSuccess else: QuitFailure)
+
+  if verbose: echo "Reading data"
+
+  let settingsJson = json.parsefile settingsFile
   var keyLayouts = initTable[string, XmlNode]()
 
   let imageNode = settingsJson["image"]
@@ -250,7 +288,7 @@ proc main() =
   for key, node in settingsJson["substitutions"]:
     substitutions[key] = if node.kind == JArray: node.mapIt it.getSubstitution else: @[node.getSubstitution]
 
-  echo "Generating image"
+  if verbose: echo "Generating image"
 
   let image = newImage(imageWidth, imageHeight)
   image.fill imageBackground
@@ -334,13 +372,13 @@ proc main() =
       posY += posYAdd
     else: posX += posXAdd
 
-  for path, typeface in typefaces: echo &"Font {path} used {typeface.uses} time(s)"
+  if verbose:
+    for path, typeface in typefaces: echo &"Font {path} used {typeface.uses} time(s)"
+    echo "Saving file"
 
-  echo "Saving file"
+  image.writeFile outFile
 
-  image.writeFile "out.png" # TODO: parameter
-
-  echo "Done"
+  if verbose: echo "Done"
 
 main()
 
