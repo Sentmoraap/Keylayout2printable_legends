@@ -98,12 +98,7 @@ proc getTypeface(path: string): Typeface =
     typeface
 
 proc getSubstitution(node: JsonNode): LegendItem =
-  # result is not intitialized with default values, I don't kynow why
-  result.string = ""
-  result.translate = vec2()
-  result.translateMirrored = vec2()
-  result.scale = vec2(1)
-  result.image = nil
+  result = LegendItem()
 
   if node.contains "string": result.string = node["string"].getStr
   if node.contains "image": result.image = readImage node["image"].getStr
@@ -126,7 +121,7 @@ proc getLegendItem(node: XmlNode; currentState: string; normalColor, deadKeyColo
     result.isDeadKey = true
     result.item.string = "dead_" & result.nextState
     result.item.color = deadKeyColor
-  # TODO: does it need initialization?
+
   result.item.translate = vec2()
   result.item.scale = vec2(1)
   result.item.image = nil
@@ -227,10 +222,10 @@ proc main() =
     echo "Usage: " & getAppFileName().extractFilename() & " [options]"
     echo """
 Options:
-  -h, --help               show this help
-  -s, --settings=PATH      use the settings JSON file at PATH
-  -o, --output=PATH        write to the png file at PATH
-  -v, --verbose            display info
+  -h, --help               show this help.
+  -s, --settings=<path>    use the settings JSON file at <path>. Default="settings.json".
+  -o, --output=<path>      write to the png file at <path>. Default="out.png".
+  -v, --verbose            display info.
 """
     quit(if validCmdArguments: QuitSuccess else: QuitFailure)
 
@@ -382,6 +377,3 @@ Options:
 
 main()
 
-# TODO: error checking
-# TODO: check inneficient memory usages
-# TODO: comments
