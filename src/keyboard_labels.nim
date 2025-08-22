@@ -1,4 +1,5 @@
 import std/[json, jsonutils, options, os, parseopt, sequtils, strformat, strutils, tables, unicode, xmlparser, xmltree]
+import normalize
 import pixie
 
 type
@@ -32,7 +33,7 @@ type
     typeface: Typeface
 
   LegendItem = object
-    string: string
+    string: string # Unicode NFD
     translate = vec2()
     translateMirrored = vec2()
     scale = vec2(1)
@@ -56,7 +57,7 @@ template findChild[T](node:XmlNode; child:untyped; elementTag:string; attrName:s
 
 var ppcm: float
 var typefaces: Table[string, TypefaceData]
-var substitutions = initTable[string, seq[LegendItem]]()
+var substitutions = initTable[string, seq[LegendItem]]() # Strings are Unicode NFD
 
 
 func getColor(node: JsonNode): ColorRGBA =
@@ -100,7 +101,7 @@ proc getTypeface(path: string): Typeface =
 proc getSubstitution(node: JsonNode): LegendItem =
   result = LegendItem()
 
-  if node.contains "string": result.string = node["string"].getStr
+  if node.contains "string": result.string = node["string"].getStr.toNFD
   if node.contains "image": result.image = readImage node["image"].getStr
   if node.contains "translateX": result.translate.x = node["translateX"].getPixels
   if node.contains "translateY": result.translate.y = node["translateY"].getPixels
@@ -115,11 +116,11 @@ proc getLegendItem(node: XmlNode; currentState: string; normalColor, deadKeyColo
   result.nextState = node.attr("next")
   if result.nextState == "" or result.nextState == currentState:
     result.isDeadKey = false
-    result.item.string = node.attr("output")
+    result.item.string = node.attr("output").toNFD
     result.item.color = normalColor
   else:
     result.isDeadKey = true
-    result.item.string = "dead_" & result.nextState
+    result.item.string = "dead_" & result.nextState.toNFD
     result.item.color = deadKeyColor
 
   result.item.translate = vec2()
@@ -281,7 +282,7 @@ Options:
         do: quit &"keyMapSet {mapSetName} not found"
 
   for key, node in settingsJson["substitutions"]:
-    substitutions[key] = if node.kind == JArray: node.mapIt it.getSubstitution else: @[node.getSubstitution]
+    substitutions[key.toNFD] = if node.kind == JArray: node.mapIt it.getSubstitution else: @[node.getSubstitution]
 
   if verbose: echo "Generating image"
 
@@ -335,7 +336,6 @@ Options:
                 break findKeyMaps
             do: discard
           echo "Key ", keyCode, " not found"
-          # TODO: normalize unicode strings
       else:
         let str0 = legendItems[legendPlace.merge[0]][0].string
         let str1 = legendItems[legendPlace.merge[1]][0].string
