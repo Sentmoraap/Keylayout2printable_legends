@@ -1,0 +1,41 @@
+# General info
+- sizes are in centimeters.
+- colors are in sRGB color space and gamma compressed. Components are in [0, 255]. A color object has three members: `r`, `g` and `b`.
+- strings are considered equals when they are canonically equivalent as defined in Unicode.
+- to test if "A" is the capital of "b", two comparisons are done: one with "A" converted to minuscules, and one with "b" converted to capitals. This avoids problems like ẞ→ß but ß→SS.
+
+# Structure
+- `image`: the properties of the generated image.
+  - `background`: image background color. Use a different color than keys so you know where to cut.
+  - `height`, `width`: size.
+  - `ppcm`: pixels per centimeter.
+- `keys`: how to render the keys and which keys are rendered.
+  - `background`: key background color.
+  - `baseLegends`: base format of legends. See the `legends` array.
+    - `align`: can be `LeftAlign`, `CenterAlign` or  `RightAlign`
+    - `color`: legend color, when it’s graphical and not a dead key.
+    - `deadKeyColor`: color in which to render dead keys. By default the dead key "foo" is written as "dead_foo", this can be changed with `substitutions`.
+    - `deadKey2Color`: color in which to render the second dead key, when you press the key (+ modifiers) twice.
+    - `fonts`: array of paths of fonts to be used. Multiple fallback fonts can be used. They are tried in array order.
+    - `keyMapIndex`: which `keyMapSet`’s `keyMap` to use, as identified by the `index` attribute.
+    - `keyLayout`: path to a macOS keylayout file.
+    - `keyMapSet`: which `keyLayout`’s `keyMapSet` to use, as identified by the `id` attribute.
+    - `merge`: array of two indices of legends to be merged. When legends at those indices in the `legends` array can be merged according to `mergeRule`, only the first one is rendered and using the current legend’s style. The comparison is done before the substitutions. This can be used for example when Shift turns the output to capitals, usually in this case the minuscules are not printed.
+    - `mergeRule`:
+      - `SAME`: the texts are the same.
+      - `UPPERCASE`: the first text is the capitalized version of the second.
+      - `LOWERCASE`: the second text is the capitalized version of the first.
+    - `otherColor`: color used for non-graphic parts of legends. For example, the ISO symbol for soft hyphen have parentheses, which are for distinction with similar-looking charactrers but not part of the characters themselves. The hyphen would be in `color` and the parentheses would be in `otherColor`. For how to color images see `image` in `substitutions`.
+    - `posX`, `posY`: legend’s coordinates relative to the key’s top rectangle.
+    - `pos2X`, `pos2Y`: second legend’s coordinates, when there is a second dead key (see `deadKey2Color`). Depending on `align` the second legend can be rendered at the first coordinates with the first legend rendered at the second coordinates. Each coordinate is optional, `posX` or `posY` are used when they respective second coordinate is unspecified.
+    - `size`: fonts size, in cm not points.
+    - `state`: which `state` to display, as in `when` tags.
+  - `codes`: array of keys to renter to the image, as in the `key` tag’s `code` attribute.
+  - `legends`: formats of legends. This is an array, a key can have multiple legends. Each entry inherits from `baseLegends` and can override it’s properties.
+  - `padding`: space between two keys and around the image edges.
+  - `sideSize`: width of the rectangles that extends the top area to form a cross shape. Those rectangles are on the keycap’s sides. They can be used to display extra legends or just to fold it so it’s placed more easily inside the relegendable.
+  - `substitutions`: map of strings to be replaced with other legends. Each substitution is an object with the following properties:
+	- `image`: image to render. Colors are converted in the following way: the red channel is the graphic channel, red is converted into the legend’s `color`. The green channel is the non-graphic channel, green becomes the legend’s `otherColor`. The blue channel is unused. The (straight) alpha channel works as usual.
+    - `string`: text to render
+    - `scale`, `scaleX`, `scaleY`, `translateX`, `translateY`: transform to apply to the text or image. Scaling is done after translation.
+  - `topHeight`, `topWidth`: size of the rectangle that will be on the keycap’s top.
