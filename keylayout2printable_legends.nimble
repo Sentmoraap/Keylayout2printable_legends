@@ -11,5 +11,5 @@ binDir        = "bin"
 # Dependencies
 
 requires "nim >= 2.0.2"
-requires "pixie >= 5.0.6"
+requires "pixie >= 5.1.0"
 requires "normalize"

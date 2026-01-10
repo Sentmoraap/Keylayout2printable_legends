@@ -27,7 +27,8 @@
       - `LOWERCASE`: the second text is the capitalized version of the first.
     - `otherColor`: color used for non-graphic parts of legends. For example, the ISO symbol for soft hyphen have parentheses, which are for distinction with similar-looking charactrers but not part of the characters themselves. The hyphen would be in `color` and the parentheses would be in `otherColor`. For how to color images see `image` in `substitutions`.
     - `posX`, `posY`: legend’s coordinates relative to the key’s top rectangle.
-    - `pos2X`, `pos2Y`: second legend’s coordinates, when there is a second dead key (see `deadKey2Color`). Depending on `align` the second legend can be rendered at the first coordinates with the first legend rendered at the second coordinates. Each coordinate is optional, `posX` or `posY` are used when they respective second coordinate is unspecified.
+    - `pos1X`, `pos1Y`: first legend’s coordinates, when there is a second dead key (see `deadKey2Color`). Each coordinate is optional, `posX` or `posY` are used when they respective second coordinate is unspecified.
+    - `pos2X`, `pos2Y`: second legend’s coordinates, when there is a second dead key (see `deadKey2Color`).
     - `size`: fonts size, in cm not points.
     - `state`: which `state` to display, as in `when` tags.
   - `codes`: array of keys to renter to the image, as in the `key` tag’s `code` attribute.

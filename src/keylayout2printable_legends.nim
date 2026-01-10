@@ -5,6 +5,8 @@ import pixie
 type
   MergeType {.pure.} = enum NO, SAME, UPPERCASE, LOWERCASE
 
+  KeyPos {.pure.} = enum SINGLE, FIRST, SECOND
+
   LegendPlace = object
     # JSON data
     layoutPath: string
@@ -18,6 +20,7 @@ type
     keyMapIndex: int
     stateName: string
     pos: Vec2
+    pos1: Vec2
     pos2: Vec2
     align: HorizontalAlignment
     mergeType: MergeType
@@ -39,6 +42,7 @@ type
     scale = vec2(1)
     image: Image
     color: Color
+    isDeadKey = false
 
 template findChild[T](node:XmlNode; child:untyped; elementTag:string; attrName:string; attrValue:T; success: untyped;
     failure: untyped) =
@@ -67,6 +71,7 @@ proc getPixels(x: JsonNode): float = ppcm * x.getFloat
 
 proc getLegendPlace(node: JsonNode; base: Option[LegendPlace] = none(LegendPlace)): LegendPlace =
   result.pos = vec2(system.Nan)
+  result.pos1 = vec2(system.Nan)
   result.pos2 = vec2(system.Nan)
   result.mergeType = NO
   if base.isSome: result = base.unsafeGet
@@ -84,6 +89,8 @@ proc getLegendPlace(node: JsonNode; base: Option[LegendPlace] = none(LegendPlace
   if node.contains "state": result.stateName = node["state"].getStr
   if node.contains "posX": result.pos.x = node["posX"].getPixels
   if node.contains "posY": result.pos.y = node["posY"].getPixels
+  if node.contains "pos1X": result.pos1.x = node["pos1X"].getPixels
+  if node.contains "pos1Y": result.pos1.y = node["pos1Y"].getPixels
   if node.contains "pos2X": result.pos2.x = node["pos2X"].getPixels
   if node.contains "pos2Y": result.pos2.y = node["pos2Y"].getPixels
   if node.contains "align": result.align.fromJson node["align"]
@@ -112,14 +119,14 @@ proc getSubstitution(node: JsonNode): LegendItem =
   if node.contains "scale": result.scale = vec2 node["scale"].getFloat
 
 proc getLegendItem(node: XmlNode; currentState: string; normalColor, deadKeyColor: Color):
-    tuple[item: LegendItem; isDeadKey: bool; nextState: string] =
+    tuple[item: LegendItem; nextState: string] =
   result.nextState = node.attr("next")
   if result.nextState == "" or result.nextState == currentState:
-    result.isDeadKey = false
+    result.item.isDeadKey = false
     result.item.string = node.attr("output").toNFD
     result.item.color = normalColor
   else:
-    result.isDeadKey = true
+    result.item.isDeadKey = true
     result.item.string = "dead_" & result.nextState.toNFD
     result.item.color = deadKeyColor
 
@@ -128,12 +135,18 @@ proc getLegendItem(node: XmlNode; currentState: string; normalColor, deadKeyColo
   result.item.image = nil
 
 proc renderLegend(image: Image; place: LegendPlace; item: LegendItem; posX, posY: float,
-    is2ndPlace: bool) =
+    keyPos: KeyPos) =
   let placePos = (
     var tempPos = place.pos
-    if is2ndPlace:
-      if place.pos2.x == place.pos2.x: tempPos.x = place.pos2.x
-      if place.pos2.y == place.pos2.y: tempPos.y = place.pos2.y
+    case keyPos:
+      of SINGLE:
+        discard
+      of FIRST:
+        if place.pos1.x == place.pos1.x: tempPos.x = place.pos1.x
+        if place.pos1.y == place.pos1.y: tempPos.y = place.pos1.y
+      of SECOND:
+        if place.pos2.x == place.pos2.x: tempPos.x = place.pos2.x
+        if place.pos2.y == place.pos2.y: tempPos.y = place.pos2.y
     tempPos
   )
   let translateMirrored = vec2(item.translateMirrored.x * (case place.align:
@@ -177,18 +190,18 @@ proc renderLegend(image: Image; place: LegendPlace; item: LegendItem; posX, posY
     image.draw newImage, transform
 
 proc renderLegendSubstitutions(image: Image; place: LegendPlace; item: LegendItem; posX, posY: float;
-    isDeadKey, is2ndPlace: bool): bool =
+    keyPos: KeyPos): bool =
   if substitutions.contains item.string:
     for substitution in substitutions[item.string]:
       var overridenLegend = substitution
       if substitution.string == "": overridenLegend.string = item.string
       overridenLegend.color = item.color
-      image.renderLegend place, overridenLegend, posX, posY, is2ndPlace
+      image.renderLegend place, overridenLegend, posX, posY, keyPos
     substitutions[item.string].len > 0
   else:
-    if isDeadKey:
+    if item.isDeadKey :
       echo "No substitution for ", item.string
-    image.renderLegend place, item, posX, posY, is2ndPlace
+    image.renderLegend place, item, posX, posY, keyPos
     true
 
 proc main() =
@@ -314,13 +327,14 @@ Options:
                   var hasDeadKey2 = false
                   findChild action, state, "when", "state", stateName:
                     var legendItem2: LegendItem
-                    let (legendItem, isDeadKey, nextState) = getLegendItem(state, stateName, legendPlace.color,
+                    let (legendItem, nextState) = getLegendItem(state, stateName, legendPlace.color,
                         legendPlace.deadKeyColor)
-                    if isDeadKey:
+                    if legendItem.isDeadKey:
                       findChild action, state2, "when", "state", nextState:
-                        (legendItem2, hasDeadKey2, _) = getLegendItem(state2, nextState, legendPlace.color,
+                        (legendItem2, _) = getLegendItem(state2, nextState, legendPlace.color,
                             legendPlace.deadKey2Color)
                       do: discard
+                      hasDeadKey2 = legendItem2.isDeadKey
                     if not hasDeadKey2:
                       legendItem2.string = ""
                     legendItems[placeIndex] = [legendItem, legendItem2]
@@ -359,9 +373,9 @@ Options:
     for placeIndex, legendPlace in legendPlaces:
       let second = addr legendItems[placeIndex][1]
       let renderedSomething = second.string.len > 0 and
-          image.renderLegendSubstitutions(legendPlace, second[], posX + keySideSize, posY + keySideSize, true, true)
+          image.renderLegendSubstitutions(legendPlace, second[], posX + keySideSize, posY + keySideSize, SECOND)
       discard image.renderLegendSubstitutions(legendPlace, legendItems[placeIndex][0],
-          posX + keySideSize, posY + keySideSize, false, legendPlace.align == RightAlign and not renderedSomething)
+          posX + keySideSize, posY + keySideSize, if renderedSomething: FIRST else: SINGLE)
     if posX + 2 * posXAdd >= imageWidth.float:
       posX = padding
       posY += posYAdd
