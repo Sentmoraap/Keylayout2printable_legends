@@ -36,7 +36,7 @@ type
     typeface: Typeface
 
   LegendItem = object
-    string: string # Unicode NFD
+    string: string # Unicode NFC, with NFD and bad fonts accents are misplaced
     translate = vec2()
     translateMirrored = vec2()
     scale = vec2(1)
@@ -61,7 +61,7 @@ template findChild[T](node:XmlNode; child:untyped; elementTag:string; attrName:s
 
 var ppcm: float
 var typefaces: Table[string, TypefaceData]
-var substitutions = initTable[string, seq[LegendItem]]() # Strings are Unicode NFD
+var substitutions = initTable[string, seq[LegendItem]]() # Strings are Unicode NFC
 
 
 func getColor(node: JsonNode): ColorRGBA =
@@ -108,7 +108,7 @@ proc getTypeface(path: string): Typeface =
 proc getSubstitution(node: JsonNode): LegendItem =
   result = LegendItem()
 
-  if node.contains "string": result.string = node["string"].getStr.toNFD
+  if node.contains "string": result.string = node["string"].getStr.toNFC
   if node.contains "image": result.image = readImage node["image"].getStr
   if node.contains "translateX": result.translate.x = node["translateX"].getPixels
   if node.contains "translateY": result.translate.y = node["translateY"].getPixels
@@ -123,11 +123,11 @@ proc getLegendItem(node: XmlNode; currentState: string; normalColor, deadKeyColo
   result.nextState = node.attr("next")
   if result.nextState == "" or result.nextState == currentState:
     result.item.isDeadKey = false
-    result.item.string = node.attr("output").toNFD
+    result.item.string = node.attr("output").toNFC
     result.item.color = normalColor
   else:
     result.item.isDeadKey = true
-    result.item.string = "dead_" & result.nextState.toNFD
+    result.item.string = "dead_" & result.nextState.toNFC
     result.item.color = deadKeyColor
 
   result.item.translate = vec2()
@@ -295,7 +295,7 @@ Options:
         do: quit &"keyMapSet {mapSetName} not found"
 
   for key, node in settingsJson["substitutions"]:
-    substitutions[key.toNFD] = if node.kind == JArray: node.mapIt it.getSubstitution else: @[node.getSubstitution]
+    substitutions[key.toNFC] = if node.kind == JArray: node.mapIt it.getSubstitution else: @[node.getSubstitution]
 
   if verbose: echo "Generating image"
 
