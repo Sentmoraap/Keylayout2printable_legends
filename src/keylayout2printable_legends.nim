@@ -331,8 +331,10 @@ Options:
                         legendPlace.deadKeyColor)
                     if legendItem.isDeadKey:
                       findChild action, state2, "when", "state", nextState:
-                        (legendItem2, _) = getLegendItem(state2, nextState, legendPlace.color,
+                        var nextState2: string
+                        (legendItem2, nextState2) = getLegendItem(state2, nextState, legendPlace.color,
                             legendPlace.deadKey2Color)
+                        if nextState2 == stateName: legendItem2 = LegendItem()
                       do: discard
                       hasDeadKey2 = legendItem2.isDeadKey
                     if not hasDeadKey2:
