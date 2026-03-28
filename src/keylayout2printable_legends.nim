@@ -355,21 +355,28 @@ Options:
       else:
         let str0 = legendItems[legendPlace.merge[0]][0].string
         let str1 = legendItems[legendPlace.merge[1]][0].string
-        let merge = if legendPlace.mergeType == SAME:
-          str0 == str1
-        else:
-          case legendPlace.mergeType:
-            of NO, SAME: # Unreachable
-              assert false
-              false
-            of MergeType.UPPERCASE:
-              str0 == str1 or str0.toLower == str1 or str0 == str1.toUpper
-            of MergeType.LOWERCASE:
-              str0 == str1 or str0.toUpper == str1 or str0 == str1.toLower
+        let merge = legendItems[legendPlace.merge[0]][0].isDeadKey == legendItems[legendPlace.merge[1]][0].isDeadKey and
+        (
+          if legendPlace.mergeType == SAME:
+            str0 == str1
+          else:
+            case legendPlace.mergeType:
+              of NO, SAME: # Unreachable
+                assert false
+                false
+              of MergeType.UPPERCASE:
+                str0 == str1 or str0.toLower == str1 or str0 == str1.toUpper
+              of MergeType.LOWERCASE:
+                str0 == str1 or str0.toUpper == str1 or str0 == str1.toLower
+        )
         if merge:
           legendItems[placeIndex][0].string = legendItems[legendPlace.merge[0]][0].string
-          legendItems[placeIndex][0].color = legendPlace.color
-          for i in 0..1: legendItems[legendPlace.merge[i]][0].string = ""
+          legendItems[placeIndex][0].isDeadKey = legendItems[legendPlace.merge[0]][0].isDeadKey
+          legendItems[placeIndex][0].color = if legendItems[placeIndex][0].isDeadKey:
+              legendItems[legendPlace.merge[0]][0].color else: legendPlace.color
+          for i in 0..1:
+            legendItems[legendPlace.merge[i]][0].string = ""
+            legendItems[legendPlace.merge[i]][0].isDeadKey = false
         else:
           legendItems[placeIndex][0].string = ""
     for placeIndex, legendPlace in legendPlaces:
