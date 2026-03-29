@@ -2,6 +2,8 @@ import std/[json, jsonutils, options, os, parseopt, sequtils, strformat, strutil
 import normalize
 import pixie
 
+{.experimental: "strictDefs".}
+
 type
   MergeType {.pure.} = enum NO, SAME, UPPERCASE, LOWERCASE
 
@@ -69,7 +71,9 @@ func getColor(node: JsonNode): ColorRGBA =
 
 proc getPixels(x: JsonNode): float = ppcm * x.getFloat
 
+{.push warning[ProveInit]: off.}
 proc getLegendPlace(node: JsonNode; base: Option[LegendPlace] = none(LegendPlace)): LegendPlace =
+  {.pop.}
   result.pos = vec2(system.Nan)
   result.pos1 = vec2(system.Nan)
   result.pos2 = vec2(system.Nan)
@@ -314,7 +318,9 @@ Options:
     path.rect(posX, posY + keySideSize, keyTotalWidth, keyTopHeight)
     image.fillPath path, keyBackground
     let keyCode = code.getInt
+    {.push warning[ProveInit]: off.}
     var legendItems = newSeq[array[2, LegendItem]](legendPlaces.len)
+    {.pop.}
     for placeIndex, legendPlace in legendPlaces:
       if legendPlace.mergeType == NO:
         block findKeyMaps:
@@ -326,12 +332,12 @@ Options:
                   let stateName = legendPlace.stateName
                   var hasDeadKey2 = false
                   findChild action, state, "when", "state", stateName:
-                    var legendItem2: LegendItem
+                    var legendItem2 = LegendItem()
                     let (legendItem, nextState) = getLegendItem(state, stateName, legendPlace.color,
                         legendPlace.deadKeyColor)
                     if legendItem.isDeadKey:
                       findChild action, state2, "when", "state", nextState:
-                        var nextState2: string
+                        let nextState2: string
                         (legendItem2, nextState2) = getLegendItem(state2, nextState, legendPlace.color,
                             legendPlace.deadKey2Color)
                         if nextState2 == stateName: legendItem2 = LegendItem()
