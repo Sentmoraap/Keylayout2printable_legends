@@ -3,7 +3,7 @@
     {
         "width":17.8,
         "height":23.5,
-        "ppcm":300,
+        "ppcm":100,
         "background":
         {
             "r":0,
@@ -32,7 +32,7 @@
                 "NotoSansSymbols2-Regular.ttf",
                 "NotoSansMath-Regular.ttf"
             ],
-            "size":0.5,
+            "scale":0.5,
             "keyLayout":"Optimot Qwerty.keylayout",
             "keyMapSet":"ANSI",
             "keyMapIndex":0,
@@ -85,8 +85,8 @@
             },
             {
                 "keyMapIndex":4,
-                "posX":0.95,
-                "pos2X":1.35,
+                "posX":1.35,
+                "pos1X":0.95,
                 "posY":0.725,
                 "color":
                 {
@@ -98,8 +98,8 @@
             },
             {
                 "keyMapIndex":5,
-                "posX":0.95,
-                "pos2X":1.35,
+                "posX":1.35,
+                "pos1X":0.95,
                 "posY":0,
                 "color":
                 {
@@ -180,6 +180,87 @@
                 "mergeRule":"UPPERCASE",
                 "merge": [7, 6],
                 "align":"CenterAlign"
+            },
+            {
+                "keyMapIndex":0,
+                "state":"science",
+                "posX":-0.3,
+                "pos1X":-0.45,
+                "pos2X":-0.15,
+                "posY":1.0,
+                "color":
+                {
+                    "r":0,
+                    "g":0,
+                    "b":0
+                },
+                "scale":0.333,
+                "align":"CenterAlign"
+            },
+            {
+                "keyMapIndex":1,
+                "state":"science",
+                "posX":-0.3,
+                "pos1X":-0.45,
+                "pos2X":-0.15,
+                "posY":0.65,
+                "color":
+                {
+                    "r":0,
+                    "g":128,
+                    "b":128
+                },
+                "scale":0.333,
+                "align":"CenterAlign"
+
+            },
+            {
+                "keyMapIndex":4,
+                "state":"science",
+                "posX":-0.3,
+                "pos1X":-0.45,
+                "pos2X":-0.15,
+                "posY":0.3,
+                "color":
+                {
+                    "r":0,
+                    "g":102,
+                    "b":204
+                },
+                "scale":0.333,
+                "align":"CenterAlign"
+            },
+            {
+                "keyMapIndex":5,
+                "state":"science",
+                "posX":-0.3,
+                "pos1X":-0.45,
+                "pos2X":-0.15,
+                "posY":-0.05,
+                "color":
+                {
+                    "r":128,
+                    "g":128,
+                    "b":128
+                },
+                "scale":0.333,
+                "align":"CenterAlign"
+            },
+            {
+                "posX":-0.3,
+                "pos1X":-0.45,
+                "pos2X":-0.15,
+                "posY":0.825,
+                "color":
+                {
+                    "r":0,
+                    "g":0,
+                    "b":0
+                },
+                "scale":0.333,
+                "align":"CenterAlign",
+                "mergeRule":"SAME",
+                "merge": [9, 10]
             }
         ],
         "codes":
@@ -279,120 +360,120 @@
         {
             "string":"©",
             "scaleX":-1,
-            "translateX":-0.4
+            "translateX":-0.8
         },
         "«":
         {
             "image":"iso7000/frquotel.png",
-            "scale":0.4,
+            "scale":0.8,
             "translateX":0,
-            "translateY":0.175
+            "translateY":0.35
         },
         "»":
         {
             "image":"iso7000/frquotel.png",
-            "scaleX":-0.4,
-            "scaleY":0.4,
-            "translateX":0.4,
-            "translateY":0.175
+            "scaleX":-0.8,
+            "scaleY":0.8,
+            "translateX":0.8,
+            "translateY":0.35
         },
         "“":
         {
             "image":"iso7000/enquotel.png",
-            "scale":0.4,
+            "scale":0.8,
             "translateX":0,
-            "translateY":0.175
+            "translateY":0.35
         },
         "”":
         {
             "image":"iso7000/enquoter.png",
-            "scale":0.4,
+            "scale":0.8,
             "translateX":0,
-            "translateY":0.175
+            "translateY":0.35
         },
         "„":
         {
             "image":"iso7000/quotebl.png",
-            "scale":0.4,
+            "scale":0.8,
             "translateX":0,
-            "translateY":0.175
+            "translateY":0.35
         },
         "‑":
         {
             "image":"iso7000/nobreakhyphen.png",
-            "scale":0.4,
+            "scale":0.8,
             "translateX":0,
-            "translateY":0.175
+            "translateY":0.35
         },
         "′":
         {
             "image":"iso7000/prime.png",
-            "scale":0.4,
+            "scale":0.8,
             "translateX":0,
-            "translateY":0.175
+            "translateY":0.35
         },
         "″":
         {
             "image":"iso7000/prime2.png",
-            "scale":0.4,
+            "scale":0.8,
             "translateX":0,
-            "translateY":0.175
+            "translateY":0.35
         },
         "−":
         {
             "image":"iso7000/minus.png",
-            "scale":0.4,
+            "scale":0.8,
             "translateX":0,
-            "translateY":0.175
+            "translateY":0.35
         },
         "‒":
         {
             "image":"iso7000/figuredash.png",
-            "scale":0.4,
+            "scale":0.8,
             "translateX":0,
-            "translateY":0.175
+            "translateY":0.35
         },
         "—":
         {
             "image":"iso7000/emdash.png",
-            "scale":0.4,
+            "scale":0.8,
             "translateX":0,
-            "translateY":0.175
+            "translateY":0.35
         },
         "–":
         {
             "image":"iso7000/endash.png",
-            "scale":0.4,
+            "scale":0.8,
             "translateX":0,
-            "translateY":0.175
+            "translateY":0.35
         },
         "‘":
         {
             "image":"iso7000/squotel.png",
-            "scale":0.4,
+            "scale":0.8,
             "translateX":0,
-            "translateY":0.175
+            "translateY":0.35
         },
         "’":
         {
             "image":"iso7000/apostrophe.png",
-            "scale":0.4,
+            "scale":0.8,
             "translateX":0,
-            "translateY":0.175
+            "translateY":0.35
         },
         "·":
         {
             "image":"iso7000/middledot.png",
-            "scale":0.4,
+            "scale":0.8,
             "translateX":0,
-            "translateY":0.175
+            "translateY":0.35
         },
         "•":
         {
             "image":"iso7000/bullet.png",
-            "scale":0.4,
+            "scale":0.8,
             "translateX":0,
-            "translateY":0.175
+            "translateY":0.35
         },
         "dead_monnaie":
         {
@@ -421,118 +502,119 @@
         "dead_exposant":
         {
             "image":"iso7000/superscript.png",
-            "scale":0.4,
+            "scale":0.8,
             "translateX":0,
-            "translateY":0.175
+            "translateY":0.35
         },
         "dead_indices":
         {
             "image":"iso7000/superscript.png",
-            "scaleX":0.4,
-            "scaleY":-0.4,
+            "scaleX":0.8,
+            "scaleY":-0.8,
             "translateX":0,
-            "translateY":0.575
+            "translateY":1.15
         },
         "dead_aigu":
         [
             {
                 "image":"iso7000/basemark.png",
-                "scale":0.4,
+                "scale":0.8,
                 "translateX":0,
-                "translateY":0.175
+                "translateY":0.35
             },
             {
                 "string":" ́",
-                "translateX":-0.05
+                "translateX":-0.1
             }
         ],
         "dead_rond":
         [
             {
                 "image":"iso7000/basemark.png",
-                "scale":0.4,
+                "scale":0.8,
                 "translateX":0,
-                "translateY":0.175
+                "translateY":0.35
             },
             {
                 "string":" ̊",
-                "translateX":-0.2
+                "translateX":-0.4
             }
         ],
         "dead_tilde":
         [
             {
                 "image":"iso7000/basemark.png",
-                "scale":0.4,
+                "scale":0.8,
                 "translateX":0,
-                "translateY":0.175
+                "translateY":0.35
             },
             {
                 "string":" ̃",
-                "translateX":-0.05
+                "translateX":-0.1
             }
         ],
         "dead_circonflexe":
         [
             {
                 "image":"iso7000/basemark.png",
-                "scale":0.4,
+                "scale":0.8,
                 "translateX":0,
-                "translateY":0.175
+                "translateY":0.35
             },
             {
                 "string":" ̂",
-                "translateX":0.05
+                "translateX":0.1
             }
         ],
         "dead_trema":
         [
             {
                 "image":"iso7000/basemark.png",
-                "scale":0.4,
+                "scale":0.8,
                 "translateX":0,
-                "translateY":0.175
+                "translateY":0.35
             },
             {
                 "string":"̈",
-                "translateMirroredX":0.2,
+                "translateMirroredX":0.4,
                 "align":"RightAlign"
             }
         ],
         "dead_corne":
         {
             "image":"iso7000/hookabove.png",
-            "scale":0.4,
-            "translateX":0,
-            "translateY":0.175
+            "scale":0.8,
+            "translateX":-0.05,
+            "translateMirroredX":-0.05,
+            "translateY":0.35
         },
         "dead_barre":
         {
             "image":"iso7000/diagonalslash.png",
-            "scale":0.4,
+            "scale":0.8,
             "translateX":0,
-            "translateY":0.175
+            "translateY":0.35
         },
         "dead_pointsuscrit":
         [
             {
                 "image":"iso7000/basemark.png",
-                "scale":0.4,
+                "scale":0.8,
                 "translateX":0,
-                "translateY":0.175
+                "translateY":0.35
             },
             {
                 "string":" ̇",
-                "translateX":-0.2
+                "translateX":-0.4
             }
         ],
         "dead_grave":
         [
             {
                 "image":"iso7000/basemark.png",
-                "scale":0.4,
+                "scale":0.8,
                 "translateX":0,
-                "translateY":0.175
+                "translateY":0.35
             },
             {
                 "string":" ̀"
@@ -542,78 +624,78 @@
         [
             {
                 "image":"iso7000/basemark.png",
-                "scale":0.4,
+                "scale":0.8,
                 "translateX":0,
-                "translateY":0.175
+                "translateY":0.35
             },
             {
                 "string":"̦",
-                "translateMirroredX":0.2
+                "translateMirroredX":0.4
             }
         ],
         "dead_macron":
         [
             {
                 "image":"iso7000/basemark.png",
-                "scale":0.4,
+                "scale":0.8,
                 "translateX":0,
-                "translateY":0.175
+                "translateY":0.35
             },
             {
                 "string":" ̄",
-                "translateX":-0.2
+                "translateX":-0.4
             }
         ],
         "dead_breve":
         [
             {
                 "image":"iso7000/basemark.png",
-                "scale":0.4,
+                "scale":0.8,
                 "translateX":0,
-                "translateY":0.175
+                "translateY":0.35
             },
             {
                 "string":" ̆",
-                "translateX":-0.2
+                "translateX":-0.4
             }
         ],
         "dead_caron":
         [
             {
                 "image":"iso7000/basemark.png",
-                "scale":0.4,
+                "scale":0.8,
                 "translateX":0,
-                "translateY":0.175
+                "translateY":0.35
             },
             {
                 "string":"̌",
-                "translateMirroredX":0.2
+                "translateMirroredX":0.4
             }
         ],
         "dead_doubleaigu":
         [
             {
                 "image":"iso7000/basemark.png",
-                "scale":0.4,
+                "scale":0.8,
                 "translateX":0,
-                "translateY":0.175
+                "translateY":0.35
             },
             {
                 "string":" ̋",
-                "translateX":-0.2
+                "translateX":-0.4
             }
         ],
         "dead_cercle":
         [
             {
                 "image":"iso7000/applicatorv.png",
-                "scale":0.4,
+                "scale":0.8,
                 "translateX":0,
-                "translateY":0.175
+                "translateY":0.35
             },
             {
                 "string":"⃝",
-                "translateX":0.125,
+                "translateX":0.25,
                 "translateY":0
             }
         ],
@@ -626,54 +708,56 @@
         "dead_tildeinscrit":
         {
             "image":"iso7000/overlaidtilde.png",
-            "scale":0.4,
+            "scale":0.8,
             "translateX":0,
-            "translateY":0.175
+            "translateY":0.35
         },
         "dead_crochef":
         [
             {
                 "image":"iso7000/basemark.png",
-                "scale":0.4,
-                "translateX":0,
-                "translateY":0.175
+                "scale":0.8,
+                "translateX":-0.05,
+                "translateMirroredX":-0.05,
+                "translateY":0.35
             },
             {
                 "string":" ̉",
-                "translateX":-0.05
+                "translateX":0.1,
+                "translateMirroredX":0.2,
             }
         ],
         "dead_raye":
         {
             "image":"iso7000/horizontalstroke.png",
-            "scale":0.4,
+            "scale":0.8,
             "translateX":0,
-            "translateY":0.175
+            "translateY":0.35
         },
         "dead_pointsouscrit":
         [
             {
                 "image":"iso7000/basemark.png",
-                "scale":0.4,
+                "scale":0.8,
                 "translateX":0,
-                "translateY":0.175
+                "translateY":0.35
             },
             {
                 "string":" ̣",
-                "translateX":-0.05
+                "translateX":-0.1
             }
         ],
         "dead_doublegrave":
         [
             {
                 "image":"iso7000/basemark.png",
-                "scale":0.4,
+                "scale":0.8,
                 "translateX":0,
-                "translateY":0.175
+                "translateY":0.35
             },
             {
                 "string":" ̏",
-                "translateX":-0.05
+                "translateX":-0.1
             }
         ],
         "dead_grec2":
@@ -684,41 +768,90 @@
         [
             {
                 "image":"iso7000/basemark.png",
-                "scale":0.4,
+                "scale":0.8,
                 "translateX":0,
-                "translateY":0.175
+                "translateY":0.35
             },
             {
                 "string":" ̱",
-                "translateX":-0.2
+                "translateX":-0.4
             }
         ],
         "dead_breveinverse":
         [
             {
                 "image":"iso7000/basemark.png",
-                "scale":0.4,
+                "scale":0.8,
                 "translateX":0,
-                "translateY":0.175
+                "translateY":0.35
             },
             {
                 "string":" ̑",
-                "translateX":-0.2
+                "translateX":-0.4
             }
         ],
         "dead_circonflexesouscrit":
         [
             {
                 "image":"iso7000/basemark.png",
-                "scale":0.4,
+                "scale":0.8,
                 "translateX":0,
-                "translateY":0.175
+                "translateY":0.35
             },
             {
                 "string":"̭",
-                "translateMirroredX":0.2
+                "translateMirroredX":0.4
             }
         ],
-
+        "dead_gotiques":
+        {
+            "string":"𝔉"
+        },
+        "dead_gotiquesgras":
+        {
+            "string":"𝕱"
+        },
+        "dead_science_barre":
+        [
+            {
+                "string":"∞"
+            },
+            {
+                "string":"̸",
+                "translateY":0.06,
+            }
+        ],
+        "dead_typewriter":
+        {
+            "string":"𝙰"
+        },
+        "dead_noir":
+        {
+            "string":"🅰"
+        },
+        "dead_italique":
+        {
+            "string":"𝑖"
+        },
+        "dead_grasitalique":
+        {
+            "string":"𝒊"
+        },
+        "dead_doubletrait":
+        {
+            "string":"ℕ"
+        },
+        "dead_scriptes":
+        {
+            "string":"𝒞"
+        },
+        "dead_calligraphique":
+        {
+            "string":"𝓒"
+        },
+        "dead_gras":
+        {
+            "string":"𝐆"
+        }
     }
 }

@@ -3,6 +3,7 @@
 - colors are in sRGB color space and gamma compressed. Components are in [0, 255]. A color object has three members: `r`, `g` and `b`.
 - strings are considered equals when they are canonically equivalent as defined in Unicode.
 - to test if "A" is the capital of "b", two comparisons are done: one with "A" converted to minuscules, and one with "b" converted to capitals. This avoids problems like ẞ→ß but ß→SS.
+- the transforms are applied in the following order: translation then scale from the `legends` array, translation then scale from the `substitution` array.
 
 # Structure
 - `image`: the properties of the generated image.
@@ -29,14 +30,14 @@
     - `posX`, `posY`: legend’s coordinates relative to the key’s top rectangle.
     - `pos1X`, `pos1Y`: first legend’s coordinates, when there is a second dead key (see `deadKey2Color`). Each coordinate is optional, `posX` or `posY` are used when they respective second coordinate is unspecified.
     - `pos2X`, `pos2Y`: second legend’s coordinates, when there is a second dead key (see `deadKey2Color`).
-    - `size`: fonts size, in cm not points.
+    - `scale`, `scaleX`, `scaleY`: legend scale. Font size at scale 1 is 1cm.
     - `state`: which `state` to display, as in `when` tags.
   - `codes`: array of keys to renter to the image, as in the `key` tag’s `code` attribute.
   - `legends`: formats of legends. This is an array, a key can have multiple legends. Each entry inherits from `baseLegends` and can override it’s properties.
   - `padding`: space between two keys and around the image edges.
   - `sideSize`: width of the rectangles that extends the top area to form a cross shape. Those rectangles are on the keycap’s sides. They can be used to display extra legends or just to fold it so it’s placed more easily inside the relegendable.
   - `substitutions`: map of strings to be replaced with other legends. Each substitution is an object with the following properties:
-	- `image`: image to render. Colors are converted in the following way: the red channel is the graphic channel, red is converted into the legend’s `color`. The green channel is the non-graphic channel, green becomes the legend’s `otherColor`. The blue channel is unused. The (straight) alpha channel works as usual.
+    - `image`: image to render. Colors are converted in the following way: the red channel is the graphic channel, red is converted into the legend’s `color`. The green channel is the non-graphic channel, green becomes the legend’s `otherColor`. The blue channel is unused. The (straight) alpha channel works as usual.
     - `string`: text to render
-    - `scale`, `scaleX`, `scaleY`, `translateX`, `translateY`: transform to apply to the text or image. Scaling is done after translation.
+    - `scale`, `scaleX`, `scaleY`, `translateX`, `translateY`: transform to apply to the text or image.
   - `topHeight`, `topWidth`: size of the rectangle that will be on the keycap’s top.

@@ -13,7 +13,7 @@ type
     # JSON data
     layoutPath: string
     fontPaths: seq[string]
-    size: float
+    scale = vec2(1)
     color: Color
     deadKeyColor: Color
     deadKey2Color: Color
@@ -78,11 +78,15 @@ proc getLegendPlace(node: JsonNode; base: Option[LegendPlace] = none(LegendPlace
   result.pos1 = vec2(system.Nan)
   result.pos2 = vec2(system.Nan)
   result.mergeType = NO
+  result.scale = vec2(1)
+
   if base.isSome: result = base.unsafeGet
   if node.contains "fonts":
     result.fontPaths.setLen 0
     for arrayNode in node["fonts"]: result.fontPaths.add arrayNode.getStr
-  if node.contains "size": result.size = node["size"].getPixels
+  if node.contains "scaleX": result.scale.x = node["scaleX"].getFloat
+  if node.contains "scaleY": result.scale.y = node["scaleY"].getFloat
+  if node.contains "scale": result.scale = vec2 node["scale"].getFloat
   if node.contains "color": result.color = node["color"].getColor.color
   if node.contains "deadKeyColor": result.deadKeyColor = node["deadKeyColor"].getColor.color
   if node.contains "deadKey2Color": result.deadKey2Color = node["deadKey2Color"].getColor.color
@@ -163,7 +167,8 @@ proc renderLegend(image: Image; place: LegendPlace; item: LegendItem; posX, posY
       ), item.translateMirrored.y)
 
   if item.image == nil:
-    var transform = translate(vec2(posX, posY) + placePos + item.translate + translateMirrored) * scale(item.scale)
+    var transform = translate(vec2(posX, posY) + placePos) * scale(place.scale) *
+        translate(item.translate + translateMirrored) * scale(item.scale)
     place.font.paint.color = item.color
     image.fillText place.font, item.string, transform, hAlign = place.align
     let typeface = place.font.typeface
@@ -179,9 +184,13 @@ proc renderLegend(image: Image; place: LegendPlace; item: LegendItem; posX, posY
               break fontsLoop
         echo &"Glyph for {rune} not found"
   else:
-    let extraTranslate = (if place.align == RightAlign: -ppcm * item.image.width.float * item.scale.x /
-        item.image.height.float else: 0)
-    var transform = translate(vec2(posX + extratranslate, posY) + placePos + item.translate + translateMirrored) *
+    let extraTranslate = vec2(-ppcm * item.image.width.float * item.scale.x / item.image.height.float *
+        (case place.align:
+      of LeftAlign: 0f
+      of CenterAlign: 0.5
+      of RightAlign: 1f), 0)
+    var transform = translate(vec2(posX, posY) + placePos) * scale(place.scale) *
+        translate(item.translate + translateMirrored + extratranslate) *
         scale(item.scale * ppcm / item.image.height.float)
     var newImage = item.image.copy()
     var transformColor = mat3(item.color.r, item.color.g, item.color.b,
@@ -277,7 +286,7 @@ Options:
         legendPlace.font = fontPath.readTypeface.newFont
       else:
         legendPlace.font.typeface.fallbacks.add fontPath.getTypeface
-    legendPlace.font.size = legendPlace.size
+    legendPlace.font.size = ppcm
 
     block findKeyMaps:
       var mapSetName = legendPlace.keyMapSet
