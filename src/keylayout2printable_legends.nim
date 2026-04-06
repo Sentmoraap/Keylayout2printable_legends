@@ -45,6 +45,7 @@ type
     image: Image
     color: Color
     isDeadKey = false
+    isNonGraphic = false
 
 template findChild[T](node:XmlNode; child:untyped; elementTag:string; attrName:string; attrValue:T; success: untyped;
     failure: untyped) =
@@ -125,6 +126,7 @@ proc getSubstitution(node: JsonNode): LegendItem =
   if node.contains "scaleX": result.scale.x = node["scaleX"].getFloat
   if node.contains "scaleY": result.scale.y = node["scaleY"].getFloat
   if node.contains "scale": result.scale = vec2 node["scale"].getFloat
+  if node.contains "nonGraphic": result.isNonGraphic = node["nonGraphic"].getBool
 
 proc getLegendItem(node: XmlNode; currentState: string; normalColor, deadKeyColor: Color):
     tuple[item: LegendItem; nextState: string] =
@@ -208,7 +210,7 @@ proc renderLegendSubstitutions(image: Image; place: LegendPlace; item: LegendIte
     for substitution in substitutions[item.string]:
       var overridenLegend = substitution
       if substitution.string == "": overridenLegend.string = item.string
-      overridenLegend.color = item.color
+      overridenLegend.color = if substitution.isNonGraphic: place.otherColor else: item.color
       image.renderLegend place, overridenLegend, posX, posY, keyPos
     substitutions[item.string].len > 0
   else:
