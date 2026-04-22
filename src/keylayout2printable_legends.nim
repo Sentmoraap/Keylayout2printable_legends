@@ -2,12 +2,14 @@ import std/[json, jsonutils, options, os, parseopt, sequtils, strformat, strutil
 import normalize
 import pixie
 
-{.experimental: "strictDefs".}
+import common
+import conditions
+include prelude
 
 type
-  MergeType {.pure.} = enum NO, SAME, UPPERCASE, LOWERCASE
-
   KeyPos {.pure.} = enum SINGLE, FIRST, SECOND
+
+  MergeType {.pure.} = enum NO, SAME, UPPERCASE, LOWERCASE
 
   LegendPlace = object
     # JSON data
@@ -27,6 +29,7 @@ type
     align: HorizontalAlignment
     mergeType: MergeType
     merge: array[2, int]
+    condition: ref Condition
 
     # Program data
     keyMaps: seq[XmlNode]
@@ -36,16 +39,6 @@ type
   TypefaceData = object
     uses: int = 0
     typeface: Typeface
-
-  LegendItem = object
-    string: string # Unicode NFC, with NFD and bad fonts accents are misplaced
-    translate = vec2()
-    translateMirrored = vec2()
-    scale = vec2(1)
-    image: Image
-    color: Color
-    isDeadKey = false
-    isNonGraphic = false
 
 template findChild[T](node:XmlNode; child:untyped; elementTag:string; attrName:string; attrValue:T; success: untyped;
     failure: untyped) =
@@ -106,6 +99,8 @@ proc getLegendPlace(node: JsonNode; base: Option[LegendPlace] = none(LegendPlace
   if node.contains "mergeRule": result.mergeType.fromJson node["mergeRule"]
   if node.contains "merge":
     for i in 0..1: result.merge[i] = node["merge"][i].getInt
+  if node.contains "enableIf":
+    result.condition = node["enableIf"].getCondition
 
 proc getTypeface(path: string): Typeface =
   if typefaces.contains path: typefaces[path].typeface
@@ -369,6 +364,9 @@ Options:
                 break findKeyMaps
             do: discard
           echo "Key ", keyCode, " not found"
+        if legendPlace.condition != nil and not legendPlace.condition.check(legendItems, placeIndex):
+          legendItems[placeIndex][0] = LegendItem()
+          legendItems[placeIndex][1] = LegendItem()
       else:
         let str0 = legendItems[legendPlace.merge[0]][0].string
         let str1 = legendItems[legendPlace.merge[1]][0].string

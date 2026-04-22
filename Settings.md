@@ -17,6 +17,12 @@
     - `color`: legend color, when it’s graphical and not a dead key.
     - `deadKeyColor`: color in which to render dead keys. By default the dead key "foo" is written as "dead_foo", this can be changed with `substitutions`.
     - `deadKey2Color`: color in which to render the second dead key, when you press the key (+ modifiers) twice.
+    - `enableIf` : render this legend only if the condition is met. The condition is an object containing only one key-value pair.
+      - `and`: array of conditions. Is true when all the conditions are true.
+      - `isNotDeadKey`: the legend to render is not a dead key. The value is ignored.
+      - `noLegendAtPlace`: there is not a legend rendered at the given index in the `legends` array.
+      - `not`: contains a condition. Is true when the condition is false.
+      - `or`: array of conditions. Is true when at least one condition is true.
     - `fonts`: array of paths of fonts to be used. Multiple fallback fonts can be used. They are tried in array order.
     - `keyMapIndex`: which `keyMapSet`’s `keyMap` to use, as identified by the `index` attribute.
     - `keyLayout`: path to a macOS keylayout file.
