@@ -22,6 +22,7 @@
       - `isNotDeadKey`: the legend to render is not a dead key. The value is ignored.
       - `noLegendAtPlace`: there is not a legend rendered at the given index in the `legends` array.
       - `not`: contains a condition. Is true when the condition is false.
+      - `notConfusableWith`: the string is not confusable (as Unicode TR39) with the one at the given index in the `legends` array. Requires a `confusables.txt` file in the same folder.
       - `or`: array of conditions. Is true when at least one condition is true.
     - `fonts`: array of paths of fonts to be used. Multiple fallback fonts can be used. They are tried in array order.
     - `keyMapIndex`: which `keyMapSet`’s `keyMap` to use, as identified by the `index` attribute.

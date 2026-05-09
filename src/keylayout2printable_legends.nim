@@ -4,6 +4,8 @@ import pixie
 
 import common
 import conditions
+import confusables
+
 include prelude
 
 type
@@ -306,6 +308,8 @@ Options:
 
   for key, node in settingsJson["substitutions"]:
     substitutions[key.toNFC] = if node.kind == JArray: node.mapIt it.getSubstitution else: @[node.getSubstitution]
+
+  confusables.load(verbose)
 
   if verbose: echo "Generating image"
 
