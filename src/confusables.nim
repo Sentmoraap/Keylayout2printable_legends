@@ -19,7 +19,7 @@ proc load*(verbose: bool) =
           let secondSemicolonPos = line.find(';', firstSemicolonPos + 1)
           if secondSemicolonPos != -1 and (hashPos == -1 or secondSemicolonPos < hashPos):
             var c = 0
-            if parseHex(line[0..<firstSemicolonPos], c) == 0: 
+            if parseHex(line[0..<firstSemicolonPos], c) == 0:
               if verbose:
                 echo "Error while parsing first column hex number. notConfusableWith condition will always be true."
               return false

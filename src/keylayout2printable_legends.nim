@@ -393,9 +393,13 @@ Options:
           legendItems[placeIndex][0].isDeadKey = legendItems[legendPlace.merge[0]][0].isDeadKey
           legendItems[placeIndex][0].color = if legendItems[placeIndex][0].isDeadKey:
               legendItems[legendPlace.merge[0]][0].color else: legendPlace.color
-          for i in 0..1:
-            legendItems[legendPlace.merge[i]][0].string = ""
-            legendItems[legendPlace.merge[i]][0].isDeadKey = false
+          if legendPlace.condition != nil and not legendPlace.condition.check(legendItems, placeIndex):
+            legendItems[placeIndex][0] = LegendItem()
+            legendItems[placeIndex][1] = LegendItem()
+          else:
+            for i in 0..1:
+              legendItems[legendPlace.merge[i]][0].string = ""
+              legendItems[legendPlace.merge[i]][0].isDeadKey = false
         else:
           legendItems[placeIndex][0].string = ""
     for placeIndex, legendPlace in legendPlaces:
