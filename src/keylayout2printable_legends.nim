@@ -60,16 +60,17 @@ template findChild[T](node:XmlNode; child:untyped; elementTag:string; attrName:s
 var ppcm: float
 var typefaces: Table[string, TypefaceData]
 var substitutions = initTable[string, seq[LegendItem]]() # Strings are Unicode NFC
-
+var workImage: Image
+var mask: Image
+var finalImage: Image
 
 func getColor(node: JsonNode): ColorRGBA =
   rgba node["r"].getInt.uint8, node["g"].getInt.uint8, node["b"].getInt.uint8, 255
 
 proc getPixels(x: JsonNode): float = ppcm * x.getFloat
 
-{.push warning[ProveInit]: off.}
 proc getLegendPlace(node: JsonNode; base: Option[LegendPlace] = none(LegendPlace)): LegendPlace =
-  {.pop.}
+  result = LegendPlace.default
   result.pos = vec2(system.Nan)
   result.pos1 = vec2(system.Nan)
   result.pos2 = vec2(system.Nan)
@@ -127,6 +128,7 @@ proc getSubstitution(node: JsonNode): LegendItem =
 
 proc getLegendItem(node: XmlNode; currentState: string; normalColor, deadKeyColor: Color):
     tuple[item: LegendItem; nextState: string] =
+  result = default(tuple[item: LegendItem; nextState: string])
   result.nextState = node.attr("next")
   if result.nextState == "" or result.nextState == currentState:
     result.item.isDeadKey = false
@@ -141,7 +143,7 @@ proc getLegendItem(node: XmlNode; currentState: string; normalColor, deadKeyColo
   result.item.scale = vec2(1)
   result.item.image = nil
 
-proc renderLegend(image: Image; place: LegendPlace; item: LegendItem; posX, posY: float,
+proc renderLegend(place: LegendPlace; item: LegendItem; posX, posY: float,
     keyPos: KeyPos) =
   let placePos = (
     var tempPos = place.pos
@@ -169,7 +171,7 @@ proc renderLegend(image: Image; place: LegendPlace; item: LegendItem; posX, posY
     var transform = translate(vec2(posX, posY) + placePos) * scale(place.scale) *
         translate(item.translate + translateMirrored) * scale(item.scale)
     place.font.paint.color = item.color
-    image.fillText place.font, item.string, transform, hAlign = place.align
+    workImage.fillText place.font, item.string, transform, hAlign = place.align
     let typeface = place.font.typeface
     for rune in item.string.runes:
       block fontsLoop:
@@ -199,21 +201,21 @@ proc renderLegend(image: Image; place: LegendPlace; item: LegendItem; posX, posY
       pixel.r = v.x.uint8
       pixel.g = v.y.uint8
       pixel.b = v.z.uint8
-    image.draw newImage, transform
+    workImage.draw newImage, transform
 
-proc renderLegendSubstitutions(image: Image; place: LegendPlace; item: LegendItem; posX, posY: float;
+proc renderLegendSubstitutions(place: LegendPlace; item: LegendItem; posX, posY: float;
     keyPos: KeyPos): bool =
   if substitutions.contains item.string:
     for substitution in substitutions[item.string]:
       var overridenLegend = substitution
       if substitution.string == "": overridenLegend.string = item.string
       overridenLegend.color = if substitution.isNonGraphic: place.otherColor else: item.color
-      image.renderLegend place, overridenLegend, posX, posY, keyPos
+      renderLegend place, overridenLegend, posX, posY, keyPos
     substitutions[item.string].len > 0
   else:
     if item.isDeadKey :
       echo "No substitution for ", item.string
-    image.renderLegend place, item, posX, posY, keyPos
+    renderLegend place, item, posX, posY, keyPos
     true
 
 proc main() =
@@ -313,20 +315,26 @@ Options:
 
   if verbose: echo "Generating image"
 
-  let image = newImage(imageWidth, imageHeight)
-  image.fill imageBackground
+  let keyTotalWidth = keyTopWidth + keySideSize * 2
+  let keyTotalHeight = keyTopHeight + keySideSize * 2
+
+  workImage = newImage(keyTotalWidth.int, keyTotalHeight.int)
+  mask = newImage(keyTotalWidth.int, keyTotalHeight.int)
+  block:
+    var path = newPath()
+    path.rect(keySideSize, 0, keyTopWidth, keyTotalHeight)
+    path.rect(0, keySideSize, keyTotalWidth, keyTopHeight)
+    mask.fill color(0, 0, 0, 0)
+    mask.fillpath path, color(1, 1, 1, 1)
+  finalImage = newImage(imageWidth, imageHeight)
+  finalImage.fill imageBackground
 
   var posX = padding
   var posY = padding
-  let keyTotalWidth = keyTopWidth + keySideSize * 2
-  let keyTotalHeight = keyTopHeight + keySideSize * 2
   let posXAdd = keyTotalWidth + padding
   let posYAdd = keyTotalHeight + padding
   for code in codesArray:
-    var path = newPath()
-    path.rect(posX + keySideSize, posY, keyTopWidth, keyTotalHeight)
-    path.rect(posX, posY + keySideSize, keyTotalWidth, keyTopHeight)
-    image.fillPath path, keyBackground
+    workImage.fill keyBackground
     let keyCode = code.getInt
     {.push warning[ProveInit]: off.}
     var legendItems = newSeq[array[2, LegendItem]](legendPlaces.len)
@@ -405,9 +413,11 @@ Options:
     for placeIndex, legendPlace in legendPlaces:
       let second = addr legendItems[placeIndex][1]
       let renderedSomething = second.string.len > 0 and
-          image.renderLegendSubstitutions(legendPlace, second[], posX + keySideSize, posY + keySideSize, SECOND)
-      discard image.renderLegendSubstitutions(legendPlace, legendItems[placeIndex][0],
-          posX + keySideSize, posY + keySideSize, if renderedSomething: FIRST else: SINGLE)
+          renderLegendSubstitutions(legendPlace, second[], keySideSize, keySideSize, SECOND)
+      discard renderLegendSubstitutions(legendPlace, legendItems[placeIndex][0], keySideSize, keySideSize,
+          if renderedSomething: FIRST else: SINGLE)
+    workImage.draw mask, blendMode = MaskBlend
+    finalImage.draw workImage, translate(vec2(posX, posY))
     if posX + 2 * posXAdd >= imageWidth.float:
       posX = padding
       posY += posYAdd
@@ -417,7 +427,7 @@ Options:
     for path, typeface in typefaces: echo &"Font {path} used {typeface.uses} time(s)"
     echo "Saving file"
 
-  image.writeFile outFile
+  finalImage.writeFile outFile
 
   if verbose: echo "Done"
 
