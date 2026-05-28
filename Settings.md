@@ -45,6 +45,10 @@
   - `sideSize`: width of the rectangles that extends the top area to form a cross shape. Those rectangles are on the keycap’s sides. They can be used to display extra legends or just to fold it so it’s placed more easily inside the relegendable.
   - `substitutions`: map of strings to be replaced with other legends. Each substitution is an object with the following properties:
     - `image`: image to render. Colors are converted in the following way: the red channel is the graphic channel, red is converted into the legend’s `color`. The green channel is the non-graphic channel, green becomes the legend’s `otherColor`. The blue channel is unused. The (straight) alpha channel works as usual.
-    - `string`: text to render
+    - `string`: text to render.
     - `scale`, `scaleX`, `scaleY`, `translateX`, `translateY`: transform to apply to the text or image.
   - `topHeight`, `topWidth`: size of the rectangle that will be on the keycap’s top.
+  - `underlay`: array of [paths](https://github.com/treeform/pixiebook/blob/master/paths.md) to draw under the legends.
+    - `color`: path color.
+    - `command`: "Fill" or "Stroke".
+    - `path`: string to be parsed as a path. Coordinates are in centimeters, with the origin at the key’s top side’s top-left corner.

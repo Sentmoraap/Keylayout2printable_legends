@@ -13,6 +13,8 @@ type
 
   MergeType {.pure.} = enum NO, SAME, UPPERCASE, LOWERCASE
 
+  PathCommand {.pure.} = enum STROKE, FILL
+
   LegendPlace = object
     # JSON data
     layoutPath: string
@@ -42,6 +44,11 @@ type
     uses: int = 0
     typeface: Typeface
 
+  DrawItem = object
+    path: Path
+    color: Color
+    command: PathCommand
+  
 template findChild[T](node:XmlNode; child:untyped; elementTag:string; attrName:string; attrValue:T; success: untyped;
     failure: untyped) =
   block loop:
@@ -63,6 +70,7 @@ var substitutions = initTable[string, seq[LegendItem]]() # Strings are Unicode N
 var workImage: Image
 var mask: Image
 var finalImage: Image
+var underlayItems: seq[DrawItem]
 
 func getColor(node: JsonNode): ColorRGBA =
   rgba node["r"].getInt.uint8, node["g"].getInt.uint8, node["b"].getInt.uint8, 255
@@ -143,6 +151,14 @@ proc getLegendItem(node: XmlNode; currentState: string; normalColor, deadKeyColo
   result.item.scale = vec2(1)
   result.item.image = nil
 
+proc getUnderlay(node: JsonNode) =
+  for item in node:
+    var drawItem = DrawItem()
+    if item.contains "path": drawItem.path = item["path"].getStr.parsePath
+    if item.contains "command": drawItem.command.fromJson item["command"]
+    if item.contains "color": drawItem.color = item["color"].getColor.color
+    underlayItems.add drawItem
+
 proc renderLegend(place: LegendPlace; item: LegendItem; posX, posY: float,
     keyPos: KeyPos) =
   let placePos = (
@@ -218,6 +234,13 @@ proc renderLegendSubstitutions(place: LegendPlace; item: LegendItem; posX, posY:
     renderLegend place, item, posX, posY, keyPos
     true
 
+proc renderUnderlay(posX, posY: float) =
+  let transform = translate(vec2(posX, posY)) * scale(vec2(ppcm, ppcm))
+  for item in underlayItems:
+    case item.command:
+      of STROKE: workImage.strokePath item.path, item.color, transform
+      of FILL: workImage.fillPath item.path, item.color, transform
+
 proc main() =
   # Handle command-line arguments
   var settingsFile = "settings.json"
@@ -275,6 +298,8 @@ Options:
   let keyBackground = keysNode["background"].getColor
   let padding = keysNode["padding"].getPixels
   let codesArray = keysNode["codes"]
+
+  if keysNode.contains "underlay": keysNode["underlay"].getUnderlay
 
   typefaces = initTable[string, TypefaceData]()
   let baseLegendPlace = keysNode["baseLegends"].getLegendPlace
@@ -335,6 +360,7 @@ Options:
   let posYAdd = keyTotalHeight + padding
   for code in codesArray:
     workImage.fill keyBackground
+    renderUnderlay keySideSize, keySideSize
     let keyCode = code.getInt
     {.push warning[ProveInit]: off.}
     var legendItems = newSeq[array[2, LegendItem]](legendPlaces.len)
