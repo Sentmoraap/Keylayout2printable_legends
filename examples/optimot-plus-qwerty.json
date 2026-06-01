@@ -261,6 +261,44 @@
                 "align":"CenterAlign",
                 "mergeRule":"SAME",
                 "merge": [9, 10]
+            },
+            {
+                "keyMapIndex":1,
+                "state":"grec",
+                "posX":0.05,
+                "posY":0.725,
+                "color":
+                {
+                    "r":130,
+                    "g":225,
+                    "b":216
+                },
+                "align":"LeftAlign",
+                "enableIf":
+                {
+                    "and":
+                    [
+                        {"noLegendAtPlace":1},
+                        {"isNotDeadKey": null},
+                        {"notConfusableWith": 4}
+                    ]
+                }
+            },
+            {
+                "posX":0.05,
+                "posY":0,
+                "color":
+                {
+                    "r":0,
+                    "g":0,
+                    "b":0
+                },
+                "mergeRule":"SAME",
+                "merge": [4, 4],
+                "enableIf":
+                {
+                    "not":{"noLegendAtPlace":14}
+                }
             }
         ],
         "codes":
@@ -852,6 +890,87 @@
         "dead_gras":
         {
             "string":"𝐆"
-        }
+        },
+        "⃗":
+        [
+            {
+                "string":"◌",
+                "nonGraphic":true
+            },
+            {
+                "string":" ⃗",
+                "translateX":-0.325
+            }
+        ],
+        "⃕":
+        [
+            {
+                "string":"◌",
+                "nonGraphic":true
+            },
+            {
+                "string":" ⃕",
+                "translateX":-0.425
+            }
+        ],
+        "͞":
+        [
+            {
+                "string":"◌◌",
+                "nonGraphic":true
+            },
+            {
+                "string":" ͞",
+                "translateX":-0.125
+            }
+        ],
+        "⃛":
+        [
+            {
+                "string":"◌",
+                "nonGraphic":true
+            },
+            {
+                "string":" ⃛",
+                "translateX":-0.35
+            }
+        ],
+        "⃜":
+        [
+            {
+                "string":"◌",
+                "nonGraphic":true
+            },
+            {
+                "string":" ⃜",
+                "translateX":-0.45
+            }
+        ],
+        "̿":
+        [
+            {
+                "string":"◌",
+                "nonGraphic":true,
+                "translateY":0.15
+            },
+            {
+                "string":" ̿",
+                "translateX":-0.125,
+                "translateY":0.15
+            }
+        ],
+        "̳":
+        [
+            {
+                "string":"◌",
+                "nonGraphic":true,
+                "translateY":-0.15
+            },
+            {
+                "string":" ̳",
+                "translateX":-0.125,
+                "translateY":-0.15
+            }
+        ]        
     }
 }
